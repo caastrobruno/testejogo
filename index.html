@@ -9,22 +9,12 @@
 html,body{
   margin:0;padding:0;overflow:hidden;
   background:#000;font-family:monospace;
+  touch-action:none;
 }
 canvas{display:block;background:#5c94fc}
 #hud{
   position:fixed;top:10px;left:10px;
   color:#fff;font-size:18px;z-index:5
-}
-.controls{
-  position:fixed;bottom:15px;width:100%;
-  display:flex;justify-content:space-between;
-  padding:0 30px;z-index:5
-}
-.btn{
-  width:70px;height:70px;border-radius:50%;
-  background:rgba(255,255,255,.25);
-  display:flex;align-items:center;justify-content:center;
-  font-size:30px;color:#fff
 }
 #proposal{
   position:fixed;inset:0;
@@ -43,12 +33,6 @@ canvas{display:block;background:#5c94fc}
 
 <div id="hud">❤️ <span id="score">0</span></div>
 <canvas id="game"></canvas>
-
-<div class="controls">
-  <div class="btn" id="left">◀</div>
-  <div class="btn" id="jump">⤒</div>
-  <div class="btn" id="right">▶</div>
-</div>
 
 <div id="proposal">
   <h1>💖 Quer casar comigo? 💖</h1>
@@ -70,42 +54,49 @@ function resize(){
 }
 resize();addEventListener("resize",resize);
 
-const GRAVITY=.9,SPEED=5,JUMP=-15;
+/* CONSTANTS */
+const GRAVITY=0.8,SPEED=5,JUMP=-17;
 const groundY=canvas.height-90;
 
-const player={x:100,y:0,w:32,h:48,vx:0,vy:0,on:false};
+/* PLAYER */
+const player={
+  x:100,y:0,w:32,h:48,
+  vx:0,vy:0,on:false,dir:1,step:0
+};
 
-let left=false,right=false;
+let score=0,cam=0;
 
-function bind(id,down,up){
-  const b=document.getElementById(id);
-  b.addEventListener("touchstart",e=>{e.preventDefault();down()});
-  b.addEventListener("touchend",e=>{e.preventDefault();up()});
-}
-bind("left",()=>left=true,()=>left=false);
-bind("right",()=>right=true,()=>right=false);
-bind("jump",()=>{
-  if(player.on){player.vy=JUMP;player.on=false;}
-},()=>{});
+/* TOUCH CONTROL (FULL SCREEN) */
+canvas.addEventListener("touchstart",e=>{
+  const t=e.touches[0];
+  const x=t.clientX;
+  const y=t.clientY;
+  const w=innerWidth;
+  const h=innerHeight;
 
-let cam=0,score=0;
+  if(y<h*0.4 && player.on){
+    player.vy=JUMP;player.on=false;
+  }else if(x<w/2){
+    player.vx=-SPEED;player.dir=-1;
+  }else{
+    player.vx=SPEED;player.dir=1;
+  }
+});
+
+canvas.addEventListener("touchend",()=>{
+  player.vx=0;
+});
 
 /* WORLD */
 const pipes=[
-  {x:500,w:60,h:120},
-  {x:900,w:60,h:160}
+  {x:450,w:60,h:90},
+  {x:850,w:60,h:140}
 ];
 
-const turtles=[
-  {x:650,y:groundY-32,v:1,alive:true},
-  {x:1050,y:groundY-32,v:-1,alive:true}
-];
-
-const castle={x:1400,w:160,h:180};
+const castle={x:1300,w:160,h:180};
 
 /* UPDATE */
 function update(){
-  player.vx=left?-SPEED:right?SPEED:0;
   player.vy+=GRAVITY;
   player.x+=player.vx;
   player.y+=player.vy;
@@ -124,27 +115,11 @@ function update(){
     }
   });
 
-  turtles.forEach(t=>{
-    if(!t.alive)return;
-    t.x+=t.v;
-    if(player.x< t.x+32 &&
-       player.x+player.w>t.x &&
-       player.y< t.y+32 &&
-       player.y+player.h>t.y){
-      if(player.vy>0){
-        t.alive=false;
-        player.vy=JUMP/1.5;
-        score++;scoreEl.innerText=score;
-      }else{
-        player.x=100;player.y=0;
-      }
-    }
-  });
-
   if(player.x+player.w>castle.x){
     proposal.style.display="flex";
   }
 
+  if(player.vx!==0)player.step=(player.step+1)%20;
   cam=player.x-150;
 }
 
@@ -152,27 +127,36 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // GROUND
   ctx.fillStyle="#7c4a16";
   ctx.fillRect(-cam,groundY,3000,90);
 
+  // PIPES
   pipes.forEach(p=>{
     ctx.fillStyle="#2ecc71";
     ctx.fillRect(p.x-cam,groundY-p.h,p.w,p.h);
   });
 
-  turtles.forEach(t=>{
-    if(!t.alive)return;
-    ctx.fillStyle="#27ae60";
-    ctx.fillRect(t.x-cam,t.y,32,32);
-  });
-
+  // CASTLE
   ctx.fillStyle="#999";
   ctx.fillRect(castle.x-cam,groundY-castle.h,castle.w,castle.h);
 
-  ctx.fillStyle="red";
-  ctx.fillRect(player.x-cam,player.y,player.w,player.h);
+  // PLAYER (MARIO STYLE)
+  const x=player.x-cam,y=player.y;
+  ctx.fillStyle="#ff0000"; // hat
+  ctx.fillRect(x+6,y,20,8);
+  ctx.fillStyle="#f1c27d"; // face
+  ctx.fillRect(x+8,y+8,16,12);
+  ctx.fillStyle="#ff0000"; // shirt
+  ctx.fillRect(x+4,y+20,24,12);
+  ctx.fillStyle="#0066ff"; // overalls
+  ctx.fillRect(x+4,y+32,24,12);
+  ctx.fillStyle="#000";
+  ctx.fillRect(x+6+(player.step<10?0:8),y+44,6,4);
+  ctx.fillRect(x+20-(player.step<10?0:8),y+44,6,4);
 }
 
+/* LOOP */
 function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 
@@ -181,7 +165,7 @@ function yes(){
   final.innerText="🎉 Player 2 desbloqueado para a vida toda 🎉";
 }
 function no(){
-  final.innerText="❌ Essa fase não tem essa opção 😏";
+  final.innerText="❌ Essa fase não aceita essa escolha 😏";
 }
 </script>
 
