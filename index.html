@@ -75,7 +75,8 @@ const player = {
   h: 48,
   vx: 0,
   vy: 0,
-  onGround: false
+  onGround: false,
+  onPipe: false
 };
 
 /* CONTROLES TOUCH */
@@ -91,9 +92,10 @@ function readTouches(touches){
     else right = true;
   }
 
-  if(jump && player.onGround){
+  if(jump && (player.onGround || player.onPipe)){
     player.vy = JUMP;
     player.onGround = false;
+    player.onPipe = false;
   }
 }
 
@@ -112,8 +114,8 @@ canvas.addEventListener("touchend",e=>{
 
 /* WORLD */
 const pipes = [
-  {x: 500, w: 60, h: 100},
-  {x: 900, w: 60, h: 150}
+  {x: 500, w: 44, h: 110},
+  {x: 900, w: 44, h: 160}
 ];
 
 const castle = { x: 1300, w: 160, h: 180 };
@@ -129,6 +131,7 @@ function update(){
   player.y += player.vy;
 
   player.onGround = false;
+  player.onPipe = false;
 
   /* chão */
   if(player.y + player.h >= groundY){
@@ -137,7 +140,7 @@ function update(){
     player.onGround = true;
   }
 
-  /* CANOS — COLISÃO PROFISSIONAL */
+  /* CANOS */
   pipes.forEach(p=>{
     const pipeTop = groundY - p.h;
 
@@ -145,7 +148,7 @@ function update(){
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    /* POUSAR EM CIMA DO CANO */
+    /* TOPO DO CANO */
     if(
       overlapX &&
       player.vy >= 0 &&
@@ -154,14 +157,14 @@ function update(){
     ){
       player.y = pipeTop - player.h;
       player.vy = 0;
-      player.onGround = true;
+      player.onPipe = true;
     }
 
-    /* COLISÃO LATERAL — SÓ SE NÃO ESTIVER EM CIMA */
+    /* COLISÃO LATERAL (só se NÃO estiver em cima) */
     else if(
       overlapX &&
-      player.y + player.h > pipeTop + 5 &&
-      !player.onGround
+      player.y + player.h > pipeTop + 6 && 
+      !player.onPipe
     ){
       if(player.vx > 0) player.x = p.x - player.w;
       if(player.vx < 0) player.x = p.x + p.w;
@@ -179,9 +182,11 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  /* chão */
   ctx.fillStyle="#7c4a16";
   ctx.fillRect(-camX, groundY, 3000, 90);
 
+  /* CANOS estilo mario */
   pipes.forEach(p=>{
     const x = p.x - camX;
     const y = groundY - p.h;
@@ -198,14 +203,16 @@ function draw(){
     ctx.fillStyle="#2ecc71";
     ctx.fillRect(x - 6, y, p.w + 12, 16);
 
-    // borda do topo
+    // borda
     ctx.fillStyle="#1e8449";
     ctx.fillRect(x - 6, y+12, p.w + 12, 4);
   });
 
+  /* castelo */
   ctx.fillStyle="#999";
   ctx.fillRect(castle.x-camX, groundY-castle.h, castle.w, castle.h);
 
+  /* player */
   const x=player.x-camX,y=player.y;
   ctx.fillStyle="#ff0000";
   ctx.fillRect(x+6,y,20,8);
