@@ -14,7 +14,8 @@ html,body{
 canvas{display:block;background:#5c94fc}
 #hud{
   position:fixed;top:10px;left:10px;
-  color:#fff;font-size:18px;z-index:5
+  color:#fff;font-size:18px;z-index:5;
+  text-shadow:2px 2px #000;
 }
 #proposal{
   position:fixed;inset:0;
@@ -31,7 +32,7 @@ canvas{display:block;background:#5c94fc}
 
 <body>
 
-<div id="hud">❤️ <span id="score">0</span></div>
+<div id="hud">🪙 <span id="score">0</span></div>
 <canvas id="game"></canvas>
 
 <div id="proposal">
@@ -54,19 +55,21 @@ function resize(){
 }
 resize();addEventListener("resize",resize);
 
-/* CONSTANTS */
-const GRAVITY=0.8,SPEED=5,JUMP=-17;
+/* CONSTANTES */
+const GRAVITY=0.75;
+const SPEED=4.5;
+const JUMP=-16;
 const groundY=canvas.height-90;
 
 /* PLAYER */
 const player={
-  x:100,y:0,w:32,h:48,
-  vx:0,vy:0,on:false,dir:1,step:0
+  x:120,y:0,w:32,h:48,
+  vx:0,vy:0,on:false,step:0
 };
 
-let score=0,cam=0;
+let cam=0,score=0;
 
-/* TOUCH CONTROL (FULL SCREEN) */
+/* TOUCH CONTROLS */
 canvas.addEventListener("touchstart",e=>{
   const t=e.touches[0];
   const x=t.clientX;
@@ -74,26 +77,36 @@ canvas.addEventListener("touchstart",e=>{
   const w=innerWidth;
   const h=innerHeight;
 
-  if(y<h*0.4 && player.on){
-    player.vy=JUMP;player.on=false;
+  if(y<h*0.35 && player.on){
+    player.vy=JUMP;
+    player.on=false;
   }else if(x<w/2){
-    player.vx=-SPEED;player.dir=-1;
+    player.vx=-SPEED;
   }else{
-    player.vx=SPEED;player.dir=1;
+    player.vx=SPEED;
   }
 });
 
-canvas.addEventListener("touchend",()=>{
-  player.vx=0;
-});
+canvas.addEventListener("touchend",()=>player.vx=0);
 
 /* WORLD */
 const pipes=[
-  {x:450,w:60,h:90},
-  {x:850,w:60,h:140}
+  {x:500,w:64,h:100},
+  {x:900,w:64,h:140}
 ];
 
-const castle={x:1300,w:160,h:180};
+const coins=[
+  {x:420,y:groundY-120,taken:false},
+  {x:760,y:groundY-160,taken:false},
+  {x:1050,y:groundY-120,taken:false}
+];
+
+const turtles=[
+  {x:650,y:groundY-32,dir:1},
+  {x:1150,y:groundY-32,dir:-1}
+];
+
+const castle={x:1400,w:180,h:200};
 
 /* UPDATE */
 function update(){
@@ -103,7 +116,8 @@ function update(){
 
   if(player.y+player.h>=groundY){
     player.y=groundY-player.h;
-    player.vy=0;player.on=true;
+    player.vy=0;
+    player.on=true;
   }
 
   pipes.forEach(p=>{
@@ -115,12 +129,29 @@ function update(){
     }
   });
 
+  coins.forEach(c=>{
+    if(!c.taken &&
+      player.x<c.x+20 &&
+      player.x+player.w>c.x &&
+      player.y<c.y+20 &&
+      player.y+player.h>c.y){
+      c.taken=true;
+      score++;scoreEl.textContent=score;
+    }
+  });
+
+  turtles.forEach(t=>{
+    t.x+=t.dir*1.2;
+    if(t.x<600||t.x>1200)t.dir*=-1;
+  });
+
   if(player.x+player.w>castle.x){
     proposal.style.display="flex";
   }
 
   if(player.vx!==0)player.step=(player.step+1)%20;
-  cam=player.x-150;
+
+  cam=player.x-canvas.width/2+player.w/2;
 }
 
 /* DRAW */
@@ -129,7 +160,7 @@ function draw(){
 
   // GROUND
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-cam,groundY,3000,90);
+  ctx.fillRect(-cam,groundY,4000,90);
 
   // PIPES
   pipes.forEach(p=>{
@@ -137,35 +168,49 @@ function draw(){
     ctx.fillRect(p.x-cam,groundY-p.h,p.w,p.h);
   });
 
-  // CASTLE
-  ctx.fillStyle="#999";
-  ctx.fillRect(castle.x-cam,groundY-castle.h,castle.w,castle.h);
+  // COINS
+  coins.forEach(c=>{
+    if(!c.taken){
+      ctx.fillStyle="gold";
+      ctx.beginPath();
+      ctx.arc(c.x-cam,c.y,8,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
 
-  // PLAYER (MARIO STYLE)
+  // TURTLES
+  turtles.forEach(t=>{
+    ctx.fillStyle="#27ae60";
+    ctx.fillRect(t.x-cam,t.y,32,20);
+    ctx.fillStyle="#145a32";
+    ctx.fillRect(t.x-cam+6,t.y+6,20,8);
+  });
+
+  // CASTLE
+  ctx.fillStyle="#aaa";
+  ctx.fillRect(castle.x-cam,groundY-castle.h,castle.w,castle.h);
+  ctx.fillRect(castle.x-cam+50,groundY-castle.h-40,80,40);
+
+  // PLAYER
   const x=player.x-cam,y=player.y;
-  ctx.fillStyle="#ff0000"; // hat
-  ctx.fillRect(x+6,y,20,8);
-  ctx.fillStyle="#f1c27d"; // face
-  ctx.fillRect(x+8,y+8,16,12);
-  ctx.fillStyle="#ff0000"; // shirt
-  ctx.fillRect(x+4,y+20,24,12);
-  ctx.fillStyle="#0066ff"; // overalls
-  ctx.fillRect(x+4,y+32,24,12);
+  ctx.fillStyle="#ff0000";ctx.fillRect(x+6,y,20,8);
+  ctx.fillStyle="#f1c27d";ctx.fillRect(x+8,y+8,16,12);
+  ctx.fillStyle="#ff0000";ctx.fillRect(x+4,y+20,24,12);
+  ctx.fillStyle="#0066ff";ctx.fillRect(x+4,y+32,24,12);
   ctx.fillStyle="#000";
   ctx.fillRect(x+6+(player.step<10?0:8),y+44,6,4);
   ctx.fillRect(x+20-(player.step<10?0:8),y+44,6,4);
 }
 
 /* LOOP */
-function loop(){update();draw();requestAnimationFrame(loop)}
-loop();
+(function loop(){update();draw();requestAnimationFrame(loop)})();
 
 /* PROPOSAL */
 function yes(){
-  final.innerText="🎉 Player 2 desbloqueado para a vida toda 🎉";
+  final.textContent="🎉 Player 2 desbloqueado para a vida toda 🎉";
 }
 function no(){
-  final.innerText="❌ Essa fase não aceita essa escolha 😏";
+  final.textContent="❌ Essa fase não aceita essa escolha 😏";
 }
 </script>
 
