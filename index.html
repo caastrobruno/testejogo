@@ -65,7 +65,6 @@ const proposal = document.getElementById("proposal");
 const final = document.getElementById("final");
 
 let groundY = 0;
-
 function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
@@ -77,7 +76,7 @@ addEventListener("resize", resize);
 /* CONSTANTS */
 const GRAVITY = 0.8;
 const SPEED = 5;
-const JUMP = -16;
+const JUMP = -17;
 
 /* PLAYER */
 const player = {
@@ -94,43 +93,42 @@ const player = {
 /* CAMERA */
 let camX = 0;
 
-/* TOUCH CONTROLS (3 ZONAS + MULTITOUCH) */
-let moveLeft = false;
-let moveRight = false;
-let wantJump = false;
+/* MULTITOUCH – 3 ZONAS */
+let moveLeft=false, moveRight=false, wantJump=false;
 
-canvas.addEventListener("touchstart", e => {
-  e.preventDefault();
+function updateTouches(touches){
   moveLeft = moveRight = wantJump = false;
-
   const third = innerWidth / 3;
 
-  for (const t of e.touches) {
+  for (const t of touches){
     if (t.clientX < third) moveLeft = true;
-    else if (t.clientX < third * 2) wantJump = true;
+    else if (t.clientX < third*2) wantJump = true;
     else moveRight = true;
   }
 
-  if (wantJump && player.onGround) {
+  if (wantJump && player.onGround){
     player.vy = JUMP;
     player.onGround = false;
   }
+}
+
+canvas.addEventListener("touchstart",e=>{
+  e.preventDefault();
+  updateTouches(e.touches);
 });
-
-canvas.addEventListener("touchend", e => {
-  moveLeft = moveRight = false;
-  const third = innerWidth / 3;
-
-  for (const t of e.touches) {
-    if (t.clientX < third) moveLeft = true;
-    else if (t.clientX > third * 2) moveRight = true;
-  }
+canvas.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  updateTouches(e.touches);
+});
+canvas.addEventListener("touchend",e=>{
+  e.preventDefault();
+  updateTouches(e.touches);
 });
 
 /* WORLD */
 const pipes = [
   {x: 500, w: 60, h: 100},
-  {x: 900, w: 60, h: 140}
+  {x: 900, w: 60, h: 150} // SEGUNDO CANO MAIS ALTO
 ];
 
 const castle = { x: 1300, w: 160, h: 180 };
@@ -144,36 +142,34 @@ function update(){
   player.y += player.vy;
 
   /* chão */
-  if (player.y + player.h >= groundY) {
+  if (player.y + player.h >= groundY){
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
   }
 
-  /* colisão com canos (CORRIGIDA) */
-  pipes.forEach(p => {
+  /* COLISÃO CORRETA DOS CANOS */
+  pipes.forEach(p=>{
     const pipeTop = groundY - p.h;
 
-    const horizontal =
+    const overlapX =
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    const feetBelowTop =
-      player.y + player.h > pipeTop + 5;
+    const playerFeetBelowTop =
+      player.y + player.h > pipeTop;
 
-    if (horizontal && feetBelowTop) {
+    if (overlapX && playerFeetBelowTop){
       if (player.vx > 0) player.x = p.x - player.w;
       if (player.vx < 0) player.x = p.x + p.w;
     }
   });
 
-  /* castelo */
-  if (player.x + player.w > castle.x) {
+  if (player.x + player.w > castle.x){
     proposal.style.display = "flex";
   }
 
   if (player.vx !== 0) player.step = (player.step + 1) % 20;
-
   camX = player.x - 150;
 }
 
@@ -181,35 +177,29 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  /* chão */
-  ctx.fillStyle = "#7c4a16";
+  ctx.fillStyle="#7c4a16";
   ctx.fillRect(-camX, groundY, 3000, 90);
 
-  /* canos */
-  pipes.forEach(p => {
-    ctx.fillStyle = "#2ecc71";
-    ctx.fillRect(p.x - camX, groundY - p.h, p.w, p.h);
+  pipes.forEach(p=>{
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(p.x-camX, groundY-p.h, p.w, p.h);
   });
 
-  /* castelo */
-  ctx.fillStyle = "#999";
-  ctx.fillRect(castle.x - camX, groundY - castle.h, castle.w, castle.h);
+  ctx.fillStyle="#999";
+  ctx.fillRect(castle.x-camX, groundY-castle.h, castle.w, castle.h);
 
-  /* MARIO */
-  const x = player.x - camX;
-  const y = player.y;
-
-  ctx.fillStyle = "#ff0000";
-  ctx.fillRect(x+6, y, 20, 8);
-  ctx.fillStyle = "#f1c27d";
-  ctx.fillRect(x+8, y+8, 16, 12);
-  ctx.fillStyle = "#ff0000";
-  ctx.fillRect(x+4, y+20, 24, 12);
-  ctx.fillStyle = "#0066ff";
-  ctx.fillRect(x+4, y+32, 24, 12);
-  ctx.fillStyle = "#000";
-  ctx.fillRect(x+6+(player.step<10?0:8), y+44, 6, 4);
-  ctx.fillRect(x+20-(player.step<10?0:8), y+44, 6, 4);
+  const x=player.x-camX,y=player.y;
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(x+6,y,20,8);
+  ctx.fillStyle="#f1c27d";
+  ctx.fillRect(x+8,y+8,16,12);
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(x+4,y+20,24,12);
+  ctx.fillStyle="#0066ff";
+  ctx.fillRect(x+4,y+32,24,12);
+  ctx.fillStyle="#000";
+  ctx.fillRect(x+6+(player.step<10?0:8),y+44,6,4);
+  ctx.fillRect(x+20-(player.step<10?0:8),y+44,6,4);
 }
 
 /* LOOP */
@@ -222,10 +212,10 @@ loop();
 
 /* PROPOSAL */
 function yes(){
-  final.innerText = "🎉 Player 2 desbloqueado para a vida toda 🎉";
+  final.innerText="🎉 Player 2 desbloqueado para a vida toda 🎉";
 }
 function no(){
-  final.innerText = "❌ Essa fase não aceita essa escolha 😏";
+  final.innerText="❌ Essa fase não aceita essa escolha 😏";
 }
 </script>
 
