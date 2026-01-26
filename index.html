@@ -138,9 +138,8 @@ const castle={x:1400,w:180,h:200};
 
 /* UPDATE */
 function update(){
-  player.vy+=GRAVITY;
-  player.vx = moveLeft ? -SPEED : moveRight ? SPEED : 0;
-  player.y+=player.vy;
+player.vx = moveLeft ? -SPEED : moveRight ? SPEED : 0;
+player.x += player.vx;
 
   if(player.y+player.h>=groundY){
     player.y=groundY-player.h;
@@ -244,5 +243,6 @@ function no(){
 
 </body>
 </html>
+
 
 
