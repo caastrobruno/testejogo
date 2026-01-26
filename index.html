@@ -50,8 +50,9 @@ const proposal=document.getElementById("proposal");
 const final=document.getElementById("final");
 
 function resize(){
-  canvas.width=innerWidth;
-  canvas.height=innerHeight;
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+groundY = canvas.height - 90;
 }
 resize();addEventListener("resize",resize);
 
@@ -244,6 +245,7 @@ function no(){
 
 </body>
 </html>
+
 
 
 
