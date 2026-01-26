@@ -2,53 +2,51 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Mini Mario World</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Super Pedido 💍</title>
+
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: #5c94fc;
-    font-family: Arial, sans-serif;
-  }
-  canvas {
-    display: block;
-  }
-  #proposal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    flex-direction: column;
-    z-index: 10;
-  }
-  #proposal button {
-    margin: 10px;
-    padding: 12px 24px;
-    font-size: 18px;
-    cursor: pointer;
-  }
-  #final {
-    margin-top: 20px;
-    font-size: 20px;
-  }
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#000;
+  touch-action:none;
+  font-family:monospace;
+}
+canvas{
+  display:block;
+  background:#5c94fc;
+}
+#proposal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.9);
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  text-align:center;
+  z-index:10;
+}
+#proposal button{
+  font-size:24px;
+  padding:12px 40px;
+  margin:10px;
+}
 </style>
 </head>
+
 <body>
 
 <canvas id="game"></canvas>
 
 <div id="proposal">
-  <h1>💍 Quer passar dessa fase comigo?</h1>
-  <div>
-    <button onclick="yes()">Sim ❤️</button>
-    <button onclick="no()">Não 😅</button>
-  </div>
-  <div id="final"></div>
+  <h1>💖 Quer casar comigo? 💖</h1>
+  <button onclick="yes()">SIM 💍</button>
+  <button onclick="no()">NÃO</button>
+  <h2 id="final"></h2>
 </div>
 
 <script>
@@ -64,7 +62,7 @@ function resize(){
 resize();
 addEventListener("resize", resize);
 
-/* CONSTANTES */
+/* CONSTANTS */
 const GRAVITY = 0.9;
 const SPEED = 5;
 const JUMP = -18;
@@ -84,37 +82,44 @@ const player = {
 };
 
 /* CONTROLES */
-let left = false, right = false;
+let left = false;
+let right = false;
 
 /* DOUBLE TAP */
 let lastJumpTap = 0;
-const DOUBLE_TAP_TIME = 300;
+const DOUBLE_TAP_TIME = 280;
 
-/* MOVIMENTO */
+/* MOVIMENTO LATERAL */
 function readTouches(touches){
   left = right = false;
   const third = innerWidth / 3;
 
   for(const t of touches){
     if(t.clientX < third) left = true;
-    else if(t.clientX > third * 2) right = true;
+    else if(t.clientX > third*2) right = true;
   }
 }
 
-/* TOUCH */
+/* TOUCH EVENTS */
 canvas.addEventListener("touchstart", e => {
   e.preventDefault();
+
   const t = e.changedTouches[0];
   const third = innerWidth / 3;
 
-  if (t.clientX >= third && t.clientX <= third * 2 && player.onGround) {
+  // ÁREA CENTRAL = PULO
+  if(t.clientX >= third && t.clientX <= third*2 && player.onGround){
     const now = Date.now();
-    if (now - lastJumpTap < DOUBLE_TAP_TIME) {
+
+    if(now - lastJumpTap <= DOUBLE_TAP_TIME){
+      // SALTO LONGO (duplo toque)
       player.vy = LONG_JUMP;
       player.vx += player.dir * LONG_JUMP_PUSH;
     } else {
+      // PULO NORMAL
       player.vy = JUMP;
     }
+
     player.onGround = false;
     lastJumpTap = now;
   }
@@ -132,7 +137,7 @@ canvas.addEventListener("touchend", e => {
   readTouches(e.touches);
 });
 
-/* MUNDO */
+/* WORLD */
 const pipes = [
   {x: 500, w: 44, h: 110},
   {x: 900, w: 44, h: 160}
@@ -169,7 +174,7 @@ function update(){
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    if (
+    if(
       overlapX &&
       player.vy >= 0 &&
       player.y + player.h >= pipeTop &&
@@ -179,14 +184,14 @@ function update(){
       player.vy = 0;
       player.onGround = true;
     }
-    else if (overlapX && player.y + player.h > pipeTop){
+    else if(overlapX && player.y + player.h > pipeTop){
       if(player.vx > 0) player.x = p.x - player.w;
       if(player.vx < 0) player.x = p.x + p.w;
     }
   });
 
   if(player.x + player.w > castle.x + 60){
-    document.getElementById("proposal").style.display = "flex";
+    document.getElementById("proposal").style.display="flex";
   }
 
   camX = player.x - 150;
@@ -196,9 +201,11 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  /* chão */
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX, groundY, 5000, 90);
+  ctx.fillRect(-camX, groundY, 4000, 90);
 
+  /* CANOS */
   pipes.forEach(p=>{
     const x = p.x - camX;
     const y = groundY - p.h;
@@ -213,6 +220,7 @@ function draw(){
     ctx.fillRect(x - 6, y+12, p.w + 12, 4);
   });
 
+  /* CASTELO */
   const cx = castle.x - camX;
   const cy = groundY - castle.h;
 
@@ -220,24 +228,20 @@ function draw(){
   ctx.fillRect(cx, cy, castle.w, castle.h);
 
   ctx.fillStyle="#333";
-  ctx.fillRect(cx + castle.w/2 - 20, groundY - 60, 40, 60);
+  ctx.fillRect(cx+castle.w/2-20, groundY-60, 40, 60);
 
-  ctx.fillStyle="#000";
-  ctx.fillRect(cx + castle.w/2, cy - 50, 4, 50);
-  ctx.fillStyle="red";
-  ctx.fillRect(cx + castle.w/2 + 4, cy - 50, 22, 14);
-
-  const px = player.x - camX;
-  const py = player.y;
+  /* PLAYER */
+  const x = player.x - camX;
+  const y = player.y;
 
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(px+6, py, 20, 8);
+  ctx.fillRect(x+6,y,20,8);
   ctx.fillStyle="#f1c27d";
-  ctx.fillRect(px+8, py+8, 16, 12);
+  ctx.fillRect(x+8,y+8,16,12);
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(px+4, py+20, 24, 12);
+  ctx.fillRect(x+4,y+20,24,12);
   ctx.fillStyle="#0066ff";
-  ctx.fillRect(px+4, py+32, 24, 12);
+  ctx.fillRect(x+4,y+32,24,12);
 }
 
 /* LOOP */
@@ -248,7 +252,6 @@ function loop(){
 }
 loop();
 
-/* FINAL */
 function yes(){
   document.getElementById("final").innerText =
     "🎉 Player 2 desbloqueado para a vida toda 🎉";
