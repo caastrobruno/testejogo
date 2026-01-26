@@ -18,14 +18,6 @@ canvas{
   display:block;
   background:#5c94fc;
 }
-#hud{
-  position:fixed;
-  top:10px;
-  left:10px;
-  color:white;
-  font-size:18px;
-  z-index:5;
-}
 #proposal{
   position:fixed;
   inset:0;
@@ -48,7 +40,6 @@ canvas{
 
 <body>
 
-<div id="hud">❤️ <span id="score">0</span></div>
 <canvas id="game"></canvas>
 
 <div id="proposal">
@@ -61,8 +52,6 @@ canvas{
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-const proposal = document.getElementById("proposal");
-const final = document.getElementById("final");
 
 let groundY = 0;
 function resize(){
@@ -74,9 +63,9 @@ resize();
 addEventListener("resize", resize);
 
 /* CONSTANTS */
-const GRAVITY = 0.8;
+const GRAVITY = 0.9;
 const SPEED = 5;
-const JUMP = -17;
+const JUMP = -18;
 
 /* PLAYER */
 const player = {
@@ -86,27 +75,23 @@ const player = {
   h: 48,
   vx: 0,
   vy: 0,
-  onGround: false,
-  step: 0
+  onGround: false
 };
 
-/* CAMERA */
-let camX = 0;
+/* CONTROLES TOUCH (3 ZONAS + MULTITOUCH) */
+let left=false, right=false, jump=false;
 
-/* MULTITOUCH – 3 ZONAS */
-let moveLeft=false, moveRight=false, wantJump=false;
-
-function updateTouches(touches){
-  moveLeft = moveRight = wantJump = false;
+function readTouches(touches){
+  left = right = jump = false;
   const third = innerWidth / 3;
 
-  for (const t of touches){
-    if (t.clientX < third) moveLeft = true;
-    else if (t.clientX < third*2) wantJump = true;
-    else moveRight = true;
+  for(const t of touches){
+    if(t.clientX < third) left = true;
+    else if(t.clientX < third*2) jump = true;
+    else right = true;
   }
 
-  if (wantJump && player.onGround){
+  if(jump && player.onGround){
     player.vy = JUMP;
     player.onGround = false;
   }
@@ -114,41 +99,43 @@ function updateTouches(touches){
 
 canvas.addEventListener("touchstart",e=>{
   e.preventDefault();
-  updateTouches(e.touches);
+  readTouches(e.touches);
 });
 canvas.addEventListener("touchmove",e=>{
   e.preventDefault();
-  updateTouches(e.touches);
+  readTouches(e.touches);
 });
 canvas.addEventListener("touchend",e=>{
   e.preventDefault();
-  updateTouches(e.touches);
+  readTouches(e.touches);
 });
 
 /* WORLD */
 const pipes = [
   {x: 500, w: 60, h: 100},
-  {x: 900, w: 60, h: 150} // SEGUNDO CANO MAIS ALTO
+  {x: 900, w: 60, h: 150}
 ];
 
 const castle = { x: 1300, w: 160, h: 180 };
 
+let camX = 0;
+
 /* UPDATE */
 function update(){
-  player.vx = moveLeft ? -SPEED : moveRight ? SPEED : 0;
+  player.vx = left ? -SPEED : right ? SPEED : 0;
 
   player.vy += GRAVITY;
   player.x += player.vx;
   player.y += player.vy;
 
   /* chão */
-  if (player.y + player.h >= groundY){
+  if(player.y + player.h >= groundY){
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
   }
 
-  /* COLISÃO CORRETA DOS CANOS */
+  /* CANOS – COLISÃO CORRETA */
   pipes.forEach(p=>{
     const pipeTop = groundY - p.h;
 
@@ -156,20 +143,32 @@ function update(){
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    const playerFeetBelowTop =
-      player.y + player.h > pipeTop;
+    /* POUSAR EM CIMA */
+    if(
+      overlapX &&
+      player.vy >= 0 &&
+      player.y + player.h >= pipeTop &&
+      player.y + player.h - player.vy < pipeTop
+    ){
+      player.y = pipeTop - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
 
-    if (overlapX && playerFeetBelowTop){
-      if (player.vx > 0) player.x = p.x - player.w;
-      if (player.vx < 0) player.x = p.x + p.w;
+    /* COLISÃO LATERAL */
+    else if(
+      overlapX &&
+      player.y + player.h > pipeTop
+    ){
+      if(player.vx > 0) player.x = p.x - player.w;
+      if(player.vx < 0) player.x = p.x + p.w;
     }
   });
 
-  if (player.x + player.w > castle.x){
-    proposal.style.display = "flex";
+  if(player.x + player.w > castle.x){
+    document.getElementById("proposal").style.display="flex";
   }
 
-  if (player.vx !== 0) player.step = (player.step + 1) % 20;
   camX = player.x - 150;
 }
 
@@ -197,9 +196,6 @@ function draw(){
   ctx.fillRect(x+4,y+20,24,12);
   ctx.fillStyle="#0066ff";
   ctx.fillRect(x+4,y+32,24,12);
-  ctx.fillStyle="#000";
-  ctx.fillRect(x+6+(player.step<10?0:8),y+44,6,4);
-  ctx.fillRect(x+20-(player.step<10?0:8),y+44,6,4);
 }
 
 /* LOOP */
@@ -210,12 +206,13 @@ function loop(){
 }
 loop();
 
-/* PROPOSAL */
 function yes(){
-  final.innerText="🎉 Player 2 desbloqueado para a vida toda 🎉";
+  document.getElementById("final").innerText =
+    "🎉 Player 2 desbloqueado para a vida toda 🎉";
 }
 function no(){
-  final.innerText="❌ Essa fase não aceita essa escolha 😏";
+  document.getElementById("final").innerText =
+    "❌ Essa fase não aceita essa escolha 😏";
 }
 </script>
 
