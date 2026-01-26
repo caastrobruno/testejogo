@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Super Pedido 💍</title>
+
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #000;
+  overflow: hidden;
+  touch-action: none;
+  font-family: 'Courier New', monospace;
+}
+
+canvas {
+  display: block;
+  background: linear-gradient(#5c94fc, #bfe6ff);
+}
+
+/* HUD */
+#hud {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-size: 18px;
+  z-index: 5;
+}
+
+/* Touch Controls */
+.controls {
+  position: fixed;
+  bottom: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 30px;
+  box-sizing: border-box;
+  z-index: 5;
+}
+
+.btn {
+  width: 70px;
+  height: 70px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: white;
+  user-select: none;
+}
+
+/* Proposal Screen */
+#proposal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  color: white;
+  z-index: 10;
+}
+
+#proposal h1 {
+  font-size: 36px;
+  margin-bottom: 20px;
+}
+
+#proposal button {
+  font-size: 24px;
+  padding: 14px 40px;
+  margin: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="hud">❤️ <span id="score">0</span></div>
+
+<canvas id="game"></canvas>
+
+<div class="controls">
+  <div class="btn" id="left">◀</div>
+  <div class="btn" id="jump">⤒</div>
+  <div class="btn" id="right">▶</div>
+</div>
+
+<div id="proposal">
+  <h1>💖 Quer casar comigo? 💖</h1>
+  <button onclick="yes()">SIM 💍</button>
+  <button onclick="no()">NÃO</button>
+  <h2 id="finalText"></h2>
+</div>
+
+<script>
+/* CONFIG */
+const PLAYER_NAME = "AMOR"; // pode ignorar ou usar depois
+const GRAVITY = 0.9;
+const SPEED = 5;
+const JUMP = -15;
+
+/* CANVAS */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+/* PLAYER */
+const player = {
+  x: 100,
+  y: 0,
+  w: 36,
+  h: 48,
+  vx: 0,
+  vy: 0,
+  onGround: false
+};
+
+const groundY = canvas.height - 80;
+
+/* WORLD */
+const platforms = [
+  { x: 350, y: groundY - 120, w: 120, h: 20 },
+  { x: 650, y: groundY - 200, w: 120, h: 20 },
+  { x: 950, y: groundY - 150, w: 120, h: 20 }
+];
+
+const hearts = [
+  { x: 380, y: groundY - 150, taken: false },
+  { x: 680, y: groundY - 230, taken: false },
+  { x: 980, y: groundY - 180, taken: false }
+];
+
+const castle = { x: 1300, y: groundY - 120, w: 120, h: 120 };
+
+let cameraX = 0;
+let score = 0;
+
+/* INPUT */
+let left = false, right = false, jump = false;
+
+function bind(btn, prop) {
+  btn.addEventListener("touchstart", e => { e.preventDefault(); window[prop] = true; });
+  btn.addEventListener("touchend", e => { e.preventDefault(); window[prop] = false; });
+}
+bind(leftBtn = document.getElementById("left"), "left");
+bind(rightBtn = document.getElementById("right"), "right");
+bind(jumpBtn = document.getElementById("jump"), "jump");
+
+/* LOOP */
+function update() {
+  player.vx = 0;
+  if (left) player.vx = -SPEED;
+  if (right) player.vx = SPEED;
+
+  if (jump && player.onGround) {
+    player.vy = JUMP;
+    player.onGround = false;
+  }
+
+  player.vy += GRAVITY;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  if (player.y + player.h >= groundY) {
+    player.y = groundY - player.h;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  platforms.forEach(p => {
+    if (
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x &&
+      player.y + player.h < p.y + 10 &&
+      player.y + player.h + player.vy >= p.y
+    ) {
+      player.y = p.y - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  });
+
+  hearts.forEach(h => {
+    if (!h.taken &&
+      player.x < h.x + 20 &&
+      player.x + player.w > h.x &&
+      player.y < h.y + 20 &&
+      player.y + player.h > h.y
+    ) {
+      h.taken = true;
+      score++;
+      document.getElementById("score").innerText = score;
+    }
+  });
+
+  if (player.x + player.w > castle.x) {
+    document.getElementById("proposal").style.display = "flex";
+  }
+
+  cameraX = player.x - 150;
+}
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "#6b4f1d";
+  ctx.fillRect(-cameraX, groundY, 3000, 80);
+
+  ctx.fillStyle = "#3e8e41";
+  platforms.forEach(p =>
+    ctx.fillRect(p.x - cameraX, p.y, p.w, p.h)
+  );
+
+  ctx.fillStyle = "pink";
+  hearts.forEach(h => {
+    if (!h.taken) {
+      ctx.beginPath();
+      ctx.arc(h.x - cameraX, h.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  ctx.fillStyle = "#888";
+  ctx.fillRect(castle.x - cameraX, castle.y, castle.w, castle.h);
+  ctx.fillRect(castle.x - cameraX + 40, castle.y - 40, 40, 40);
+
+  ctx.fillStyle = "red";
+  ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* PROPOSAL */
+function yes() {
+  document.getElementById("finalText").innerText =
+    "🎉 Player 2 desbloqueado para a vida toda 🎉";
+}
+function no() {
+  alert("Essa opção não existe 😏");
+}
+</script>
+
+</body>
+</html>
