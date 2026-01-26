@@ -6,71 +6,35 @@
 <title>Super Pedido 💍</title>
 
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  background: #000;
-  overflow: hidden;
-  touch-action: none;
-  font-family: 'Courier New', monospace;
+html,body{
+  margin:0;padding:0;overflow:hidden;
+  background:#000;font-family:monospace;
 }
-
-canvas { display: block; }
-
-/* HUD */
-#hud {
-  position: fixed;
-  top: 10px;
-  left: 12px;
-  color: white;
-  font-size: 18px;
-  z-index: 5;
-  text-shadow: 2px 2px 0 #000;
+canvas{display:block;background:#5c94fc}
+#hud{
+  position:fixed;top:10px;left:10px;
+  color:#fff;font-size:18px;z-index:5
 }
-
-/* Touch Controls */
-.controls {
-  position: fixed;
-  bottom: 18px;
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 30px;
-  box-sizing: border-box;
-  z-index: 5;
+.controls{
+  position:fixed;bottom:15px;width:100%;
+  display:flex;justify-content:space-between;
+  padding:0 30px;z-index:5
 }
-
-.btn {
-  width: 70px;
-  height: 70px;
-  background: rgba(255,255,255,0.25);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30px;
-  color: white;
-  user-select: none;
+.btn{
+  width:70px;height:70px;border-radius:50%;
+  background:rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;color:#fff
 }
-
-/* Proposal */
-#proposal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.9);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  color: white;
-  z-index: 10;
-  text-align: center;
+#proposal{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.9);
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  color:white;text-align:center;z-index:10
 }
-#proposal h1 { font-size: 36px; }
-#proposal button {
-  font-size: 24px;
-  padding: 14px 40px;
-  margin: 10px;
+#proposal button{
+  font-size:24px;padding:12px 40px;margin:10px
 }
 </style>
 </head>
@@ -81,104 +45,99 @@ canvas { display: block; }
 <canvas id="game"></canvas>
 
 <div class="controls">
-  <div class="btn" id="btnLeft">◀</div>
-  <div class="btn" id="btnJump">⤒</div>
-  <div class="btn" id="btnRight">▶</div>
+  <div class="btn" id="left">◀</div>
+  <div class="btn" id="jump">⤒</div>
+  <div class="btn" id="right">▶</div>
 </div>
 
 <div id="proposal">
   <h1>💖 Quer casar comigo? 💖</h1>
   <button onclick="yes()">SIM 💍</button>
+  <button onclick="no()">NÃO</button>
+  <h2 id="final"></h2>
 </div>
 
 <script>
-/* CANVAS */
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const scoreEl=document.getElementById("score");
+const proposal=document.getElementById("proposal");
+const final=document.getElementById("final");
+
+function resize(){
+  canvas.width=innerWidth;
+  canvas.height=innerHeight;
 }
-resize();
-window.addEventListener("resize", resize);
+resize();addEventListener("resize",resize);
 
-/* CONSTANTS */
-const GRAVITY = 0.9;
-const SPEED = 5;
-const JUMP = -15;
-const groundY = canvas.height - 96;
+const GRAVITY=.9,SPEED=5,JUMP=-15;
+const groundY=canvas.height-90;
 
-/* PLAYER */
-const player = {
-  x: 100, y: 0, w: 32, h: 48,
-  vx: 0, vy: 0, onGround: false,
-  frame: 0, tick: 0
-};
+const player={x:100,y:0,w:32,h:48,vx:0,vy:0,on:false};
 
-/* INPUT */
-let left=false, right=false;
-const bind = (btn, s, e) => {
-  btn.addEventListener("touchstart",ev=>{ev.preventDefault();s();});
-  btn.addEventListener("touchend",ev=>{ev.preventDefault();e();});
-};
-bind(btnLeft,()=>left=true,()=>left=false);
-bind(btnRight,()=>right=true,()=>right=false);
-bind(btnJump,()=>{
-  if(player.onGround){player.vy=JUMP;player.onGround=false;}
+let left=false,right=false;
+
+function bind(id,down,up){
+  const b=document.getElementById(id);
+  b.addEventListener("touchstart",e=>{e.preventDefault();down()});
+  b.addEventListener("touchend",e=>{e.preventDefault();up()});
+}
+bind("left",()=>left=true,()=>left=false);
+bind("right",()=>right=true,()=>right=false);
+bind("jump",()=>{
+  if(player.on){player.vy=JUMP;player.on=false;}
 },()=>{});
 
+let cam=0,score=0;
+
 /* WORLD */
-let cameraX = 0;
-let score = 0;
-
-const platforms = [
-  {x:300,y:groundY-120,w:128,h:32},
-  {x:650,y:groundY-200,w:128,h:32},
-  {x:1000,y:groundY-160,w:128,h:32}
+const pipes=[
+  {x:500,w:60,h:120},
+  {x:900,w:60,h:160}
 ];
 
-const hearts = [
-  {x:340,y:groundY-150,t:0,taken:false},
-  {x:690,y:groundY-230,t:0,taken:false},
-  {x:1040,y:groundY-190,t:0,taken:false}
+const turtles=[
+  {x:650,y:groundY-32,v:1,alive:true},
+  {x:1050,y:groundY-32,v:-1,alive:true}
 ];
 
-const castle = {x:1350,y:groundY-160,w:160,h:160};
+const castle={x:1400,w:160,h:180};
 
 /* UPDATE */
 function update(){
-  player.vx = left?-SPEED:right?SPEED:0;
-  player.vy += GRAVITY;
-  player.x += player.vx;
-  player.y += player.vy;
+  player.vx=left?-SPEED:right?SPEED:0;
+  player.vy+=GRAVITY;
+  player.x+=player.vx;
+  player.y+=player.vy;
 
   if(player.y+player.h>=groundY){
     player.y=groundY-player.h;
-    player.vy=0;
-    player.onGround=true;
+    player.vy=0;player.on=true;
   }
 
-  platforms.forEach(p=>{
+  pipes.forEach(p=>{
     if(player.x<p.x+p.w &&
        player.x+player.w>p.x &&
-       player.y+player.h<=p.y+10 &&
-       player.y+player.h+player.vy>=p.y){
-      player.y=p.y-player.h;
-      player.vy=0;
-      player.onGround=true;
+       player.y+player.h>groundY-p.h){
+      if(player.vx>0)player.x=p.x-player.w;
+      if(player.vx<0)player.x=p.x+p.w;
     }
   });
 
-  hearts.forEach(h=>{
-    h.t+=0.1;
-    if(!h.taken &&
-      player.x<h.x+24 &&
-      player.x+player.w>h.x &&
-      player.y<h.y+24 &&
-      player.y+player.h>h.y){
-      h.taken=true;
-      score++;
-      scoreEl.innerText=score;
+  turtles.forEach(t=>{
+    if(!t.alive)return;
+    t.x+=t.v;
+    if(player.x< t.x+32 &&
+       player.x+player.w>t.x &&
+       player.y< t.y+32 &&
+       player.y+player.h>t.y){
+      if(player.vy>0){
+        t.alive=false;
+        player.vy=JUMP/1.5;
+        score++;scoreEl.innerText=score;
+      }else{
+        player.x=100;player.y=0;
+      }
     }
   });
 
@@ -186,75 +145,43 @@ function update(){
     proposal.style.display="flex";
   }
 
-  if(player.vx!==0){
-    player.tick++;
-    if(player.tick%6===0) player.frame=(player.frame+1)%2;
-  }
-
-  cameraX = player.x - 150;
+  cam=player.x-150;
 }
 
 /* DRAW */
 function draw(){
-  // SKY
-  ctx.fillStyle="#5c94fc";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // CLOUDS (parallax)
-  ctx.fillStyle="#fff";
-  for(let i=0;i<6;i++){
-    ctx.beginPath();
-    ctx.arc(200*i-(cameraX*0.3)%1200,120,40,0,Math.PI*2);
-    ctx.fill();
-  }
+  ctx.fillStyle="#7c4a16";
+  ctx.fillRect(-cam,groundY,3000,90);
 
-  // GROUND TILES
-  for(let i=0;i<80;i++){
-    ctx.fillStyle=i%2?"#7c4a16":"#6b3e10";
-    ctx.fillRect(i*64-cameraX,groundY,64,96);
-  }
-
-  // PLATFORMS
-  platforms.forEach(p=>{
-    ctx.fillStyle="#3e8e41";
-    ctx.fillRect(p.x-cameraX,p.y,p.w,p.h);
+  pipes.forEach(p=>{
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(p.x-cam,groundY-p.h,p.w,p.h);
   });
 
-  // HEARTS (rotating)
-  hearts.forEach(h=>{
-    if(!h.taken){
-      ctx.save();
-      ctx.translate(h.x-cameraX,h.y);
-      ctx.rotate(h.t);
-      ctx.fillStyle="pink";
-      ctx.beginPath();
-      ctx.arc(0,0,10,0,Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
+  turtles.forEach(t=>{
+    if(!t.alive)return;
+    ctx.fillStyle="#27ae60";
+    ctx.fillRect(t.x-cam,t.y,32,32);
   });
 
-  // CASTLE
   ctx.fillStyle="#999";
-  ctx.fillRect(castle.x-cameraX,castle.y,castle.w,castle.h);
-  ctx.fillRect(castle.x-cameraX+50,castle.y-40,60,40);
+  ctx.fillRect(castle.x-cam,groundY-castle.h,castle.w,castle.h);
 
-  // PLAYER (animated)
-  ctx.fillStyle=player.frame?"#ff5555":"#ff0000";
-  ctx.fillRect(player.x-cameraX,player.y,player.w,player.h);
+  ctx.fillStyle="red";
+  ctx.fillRect(player.x-cam,player.y,player.w,player.h);
 }
 
-/* LOOP */
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
+function loop(){update();draw();requestAnimationFrame(loop)}
 loop();
 
 /* PROPOSAL */
 function yes(){
-  proposal.innerHTML="<h1>🎉 Player 2 desbloqueado para a vida toda 🎉</h1>";
+  final.innerText="🎉 Player 2 desbloqueado para a vida toda 🎉";
+}
+function no(){
+  final.innerText="❌ Essa fase não tem essa opção 😏";
 }
 </script>
 
