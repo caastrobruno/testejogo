@@ -1,54 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Super Pedido 💍</title>
-
-<style>
-html,body{
-  margin:0;
-  padding:0;
-  overflow:hidden;
-  background:#000;
-  touch-action:none;
-  font-family:monospace;
-}
-canvas{
-  display:block;
-  background:#5c94fc;
-}
-#proposal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.9);
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  color:white;
-  text-align:center;
-  z-index:10;
-}
-#proposal button{
-  font-size:24px;
-  padding:12px 40px;
-  margin:10px;
-}
-</style>
-</head>
-
-<body>
-
-<canvas id="game"></canvas>
-
-<div id="proposal">
-  <h1>💖 Quer casar comigo? 💖</h1>
-  <button onclick="yes()">SIM 💍</button>
-  <button onclick="no()">NÃO</button>
-  <h2 id="final"></h2>
-</div>
-
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -82,14 +31,14 @@ const player = {
 };
 
 /* CONTROLES */
-let left = false;
-let right = false;
+let left=false, right=false;
 
-/* DOUBLE TAP */
-let lastJumpTap = 0;
-const DOUBLE_TAP_TIME = 280;
+/* DOUBLE TAP REAL */
+let jumpTaps = 0;
+let jumpTimer = null;
+const DOUBLE_TAP_TIME = 300;
 
-/* MOVIMENTO LATERAL */
+/* MOVIMENTO */
 function readTouches(touches){
   left = right = false;
   const third = innerWidth / 3;
@@ -100,39 +49,45 @@ function readTouches(touches){
   }
 }
 
-/* TOUCH EVENTS */
-canvas.addEventListener("touchstart", e => {
+/* TOUCH START */
+canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
-
   const t = e.changedTouches[0];
   const third = innerWidth / 3;
 
-  // ÁREA CENTRAL = PULO
+  // ÁREA DO PULO (CENTRO)
   if(t.clientX >= third && t.clientX <= third*2 && player.onGround){
-    const now = Date.now();
+    jumpTaps++;
 
-    if(now - lastJumpTap <= DOUBLE_TAP_TIME){
-      // SALTO LONGO (duplo toque)
-      player.vy = LONG_JUMP;
-      player.vx += player.dir * LONG_JUMP_PUSH;
-    } else {
-      // PULO NORMAL
-      player.vy = JUMP;
+    if(jumpTaps === 1){
+      jumpTimer = setTimeout(()=>{
+        // PULO NORMAL
+        player.vy = JUMP;
+        player.onGround = false;
+        jumpTaps = 0;
+      }, DOUBLE_TAP_TIME);
     }
 
-    player.onGround = false;
-    lastJumpTap = now;
+    if(jumpTaps === 2){
+      clearTimeout(jumpTimer);
+
+      // SALTO LONGO
+      player.vy = LONG_JUMP;
+      player.vx += player.dir * LONG_JUMP_PUSH;
+      player.onGround = false;
+      jumpTaps = 0;
+    }
   }
 
   readTouches(e.touches);
 });
 
-canvas.addEventListener("touchmove", e => {
+canvas.addEventListener("touchmove", e=>{
   e.preventDefault();
   readTouches(e.touches);
 });
 
-canvas.addEventListener("touchend", e => {
+canvas.addEventListener("touchend", e=>{
   e.preventDefault();
   readTouches(e.touches);
 });
@@ -201,11 +156,9 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  /* chão */
   ctx.fillStyle="#7c4a16";
   ctx.fillRect(-camX, groundY, 4000, 90);
 
-  /* CANOS */
   pipes.forEach(p=>{
     const x = p.x - camX;
     const y = groundY - p.h;
@@ -220,20 +173,20 @@ function draw(){
     ctx.fillRect(x - 6, y+12, p.w + 12, 4);
   });
 
-  /* CASTELO */
   const cx = castle.x - camX;
   const cy = groundY - castle.h;
 
   ctx.fillStyle="#b0b0b0";
   ctx.fillRect(cx, cy, castle.w, castle.h);
 
-  ctx.fillStyle="#333";
-  ctx.fillRect(cx+castle.w/2-20, groundY-60, 40, 60);
+  ctx.fillStyle="#9a9a9a";
+  for(let y=cy+20;y<cy+castle.h;y+=20){
+    for(let x=cx;x<cx+castle.w;x+=40){
+      ctx.fillRect(x+2,y+2,36,16);
+    }
+  }
 
-  /* PLAYER */
-  const x = player.x - camX;
-  const y = player.y;
-
+  const x=player.x-camX,y=player.y;
   ctx.fillStyle="#ff0000";
   ctx.fillRect(x+6,y,20,8);
   ctx.fillStyle="#f1c27d";
@@ -251,16 +204,4 @@ function loop(){
   requestAnimationFrame(loop);
 }
 loop();
-
-function yes(){
-  document.getElementById("final").innerText =
-    "🎉 Player 2 desbloqueado para a vida toda 🎉";
-}
-function no(){
-  document.getElementById("final").innerText =
-    "❌ Essa fase não aceita essa escolha 😏";
-}
 </script>
-
-</body>
-</html>
