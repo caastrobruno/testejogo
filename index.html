@@ -69,25 +69,39 @@ const player={
 
 let cam=0,score=0;
 
-/* TOUCH CONTROLS */
-canvas.addEventListener("touchstart",e=>{
-  const t=e.touches[0];
-  const x=t.clientX;
-  const y=t.clientY;
-  const w=innerWidth;
-  const h=innerHeight;
+/* TOUCH CONTROL (3 PARTS OF SCREEN) */
+canvas.addEventListener("touchstart", e => {
+const t = e.touches[0];
+const x = t.clientX;
+const w = innerWidth;
 
-  if(y<h*0.35 && player.on){
-    player.vy=JUMP;
-    player.on=false;
-  }else if(x<w/2){
-    player.vx=-SPEED;
-  }else{
-    player.vx=SPEED;
-  }
+
+const third = w / 3;
+
+
+// ESQUERDA
+if (x < third) {
+player.vx = -SPEED;
+player.dir = -1;
+}
+// CENTRO (PULO)
+else if (x < third * 2) {
+if (player.on) {
+player.vy = JUMP;
+player.on = false;
+}
+}
+// DIREITA
+else {
+player.vx = SPEED;
+player.dir = 1;
+}
 });
 
-canvas.addEventListener("touchend",()=>player.vx=0);
+
+canvas.addEventListener("touchend", () => {
+player.vx = 0;
+});
 
 /* WORLD */
 const pipes=[
@@ -216,3 +230,4 @@ function no(){
 
 </body>
 </html>
+
