@@ -78,7 +78,7 @@ const player = {
   onGround: false
 };
 
-/* CONTROLES TOUCH (3 ZONAS + MULTITOUCH) */
+/* CONTROLES TOUCH */
 let left=false, right=false, jump=false;
 
 function readTouches(touches){
@@ -110,10 +110,10 @@ canvas.addEventListener("touchend",e=>{
   readTouches(e.touches);
 });
 
-/* WORLD */
+/* WORLD — CANOS MAIS FINOS */
 const pipes = [
-  {x: 500, w: 60, h: 100},
-  {x: 900, w: 60, h: 150}
+  {x: 500, w: 44, h: 110},
+  {x: 900, w: 44, h: 160}
 ];
 
 const castle = { x: 1300, w: 160, h: 180 };
@@ -128,14 +128,12 @@ function update(){
   player.x += player.vx;
   player.y += player.vy;
 
-  /* chão */
   if(player.y + player.h >= groundY){
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
   }
 
-  /* CANOS – COLISÃO CORRETA */
   pipes.forEach(p=>{
     const pipeTop = groundY - p.h;
 
@@ -143,7 +141,6 @@ function update(){
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    /* POUSAR EM CIMA */
     if(
       overlapX &&
       player.vy >= 0 &&
@@ -154,8 +151,6 @@ function update(){
       player.vy = 0;
       player.onGround = true;
     }
-
-    /* COLISÃO LATERAL */
     else if(
       overlapX &&
       player.y + player.h > pipeTop
@@ -172,16 +167,33 @@ function update(){
   camX = player.x - 150;
 }
 
-/* DRAW */
+/* DESENHO */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.fillStyle="#7c4a16";
   ctx.fillRect(-camX, groundY, 3000, 90);
 
+  /* CANOS ESTILO MARIO */
   pipes.forEach(p=>{
+    const x = p.x - camX;
+    const y = groundY - p.h;
+
+    // corpo
     ctx.fillStyle="#2ecc71";
-    ctx.fillRect(p.x-camX, groundY-p.h, p.w, p.h);
+    ctx.fillRect(x, y+14, p.w, p.h-14);
+
+    // sombra
+    ctx.fillStyle="#27ae60";
+    ctx.fillRect(x + p.w - 6, y+14, 6, p.h-14);
+
+    // topo
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(x - 6, y, p.w + 12, 16);
+
+    // borda do topo
+    ctx.fillStyle="#1e8449";
+    ctx.fillRect(x - 6, y+12, p.w + 12, 4);
   });
 
   ctx.fillStyle="#999";
