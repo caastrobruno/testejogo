@@ -68,6 +68,10 @@ const SPEED = 5;
 const JUMP = -18;
 const JUMP_HIGH = -26;
 
+/* DOUBLE TAP */
+let lastJumpTap = 0;
+const DOUBLE_TAP_TIME = 300;
+
 /* PLAYER */
 const player = {
   x: 100,
@@ -79,40 +83,41 @@ const player = {
   onGround: false
 };
 
-/* CONTROLES TOUCH */
-let left=false, right=false;
+/* CONTROLES TOUCH (3 ZONAS + MULTITOUCH) */
+let left=false, right=false, jump=false;
 
-/* DOUBLE TAP */
-let lastJumpTap = 0;
-const DOUBLE_TAP_TIME = 300;
-
-canvas.addEventListener("touchstart", e=>{
-  e.preventDefault();
+function readTouches(touches){
+  left = right = jump = false;
   const third = innerWidth / 3;
 
-  for(const t of e.touches){
+  for(const t of touches){
     if(t.clientX < third) left = true;
-    else if(t.clientX > third*2) right = true;
-    else{
-      const now = Date.now();
-      const diff = now - lastJumpTap;
-
-      if(player.onGround){
-        if(diff < DOUBLE_TAP_TIME){
-          player.vy = JUMP_HIGH; // pulo alto
-        }else{
-          player.vy = JUMP; // pulo normal
-        }
-        player.onGround = false;
-        lastJumpTap = now;
-      }
-    }
+    else if(t.clientX < third*2) jump = true;
+    else right = true;
   }
-});
 
-canvas.addEventListener("touchend", e=>{
+  if(jump && player.onGround){
+    const now = Date.now();
+    const diff = now - lastJumpTap;
+
+    player.vy = diff < DOUBLE_TAP_TIME ? JUMP_HIGH : JUMP;
+
+    lastJumpTap = now;
+    player.onGround = false;
+  }
+}
+
+canvas.addEventListener("touchstart",e=>{
   e.preventDefault();
-  left = right = false;
+  readTouches(e.touches);
+});
+canvas.addEventListener("touchmove",e=>{
+  e.preventDefault();
+  readTouches(e.touches);
+});
+canvas.addEventListener("touchend",e=>{
+  e.preventDefault();
+  readTouches(e.touches);
 });
 
 /* WORLD */
@@ -148,6 +153,7 @@ function update(){
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
+    /* pousar em cima */
     if(
       overlapX &&
       player.vy >= 0 &&
@@ -158,7 +164,11 @@ function update(){
       player.vy = 0;
       player.onGround = true;
     }
-    else if(overlapX && player.y + player.h > pipeTop){
+    /* colisão lateral */
+    else if(
+      overlapX &&
+      player.y + player.h > pipeTop
+    ){
       if(player.vx > 0) player.x = p.x - player.w;
       if(player.vx < 0) player.x = p.x + p.w;
     }
@@ -175,18 +185,23 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  /* chão */
   ctx.fillStyle="#7c4a16";
   ctx.fillRect(-camX, groundY, 3000, 90);
 
+  /* canos */
   pipes.forEach(p=>{
     ctx.fillStyle="#2ecc71";
     ctx.fillRect(p.x-camX, groundY-p.h, p.w, p.h);
   });
 
-  /* CASTELO */
-  ctx.fillStyle="#999";
+  /* castelo */
+  ctx.fillStyle="#bbb";
   ctx.fillRect(castle.x-camX, groundY-castle.h, castle.w, castle.h);
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(castle.x-camX+50, groundY-castle.h-30, 60, 30);
 
+  /* player */
   const x=player.x-camX,y=player.y;
   ctx.fillStyle="#ff0000";
   ctx.fillRect(x+6,y,20,8);
@@ -206,6 +221,7 @@ function loop(){
 }
 loop();
 
+/* FINAL */
 function yes(){
   document.getElementById("final").innerText =
     "🎉 Player 2 desbloqueado para a vida toda 🎉";
