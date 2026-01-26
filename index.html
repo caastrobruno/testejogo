@@ -45,7 +45,7 @@ canvas {
 .btn {
   width: 70px;
   height: 70px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.25);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -89,9 +89,9 @@ canvas {
 <canvas id="game"></canvas>
 
 <div class="controls">
-  <div class="btn" id="left">◀</div>
-  <div class="btn" id="jump">⤒</div>
-  <div class="btn" id="right">▶</div>
+  <div class="btn" id="btnLeft">◀</div>
+  <div class="btn" id="btnJump">⤒</div>
+  <div class="btn" id="btnRight">▶</div>
 </div>
 
 <div id="proposal">
@@ -102,12 +102,6 @@ canvas {
 </div>
 
 <script>
-/* CONFIG */
-const PLAYER_NAME = "AMOR"; // pode ignorar ou usar depois
-const GRAVITY = 0.9;
-const SPEED = 5;
-const JUMP = -15;
-
 /* CANVAS */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -117,6 +111,11 @@ function resize() {
 }
 resize();
 window.addEventListener("resize", resize);
+
+/* GAME CONSTANTS */
+const GRAVITY = 0.9;
+const SPEED = 5;
+const JUMP_FORCE = -15;
 
 /* PLAYER */
 const player = {
@@ -149,27 +148,44 @@ const castle = { x: 1300, y: groundY - 120, w: 120, h: 120 };
 let cameraX = 0;
 let score = 0;
 
-/* INPUT */
-let left = false, right = false, jump = false;
+/* INPUT FLAGS */
+let moveLeft = false;
+let moveRight = false;
+let jumpPressed = false;
 
-function bind(btn, prop) {
-  btn.addEventListener("touchstart", e => { e.preventDefault(); window[prop] = true; });
-  btn.addEventListener("touchend", e => { e.preventDefault(); window[prop] = false; });
+/* TOUCH CONTROLS */
+const btnLeft = document.getElementById("btnLeft");
+const btnRight = document.getElementById("btnRight");
+const btnJump = document.getElementById("btnJump");
+
+function bindButton(btn, onStart, onEnd) {
+  btn.addEventListener("touchstart", e => {
+    e.preventDefault();
+    onStart();
+  });
+  btn.addEventListener("touchend", e => {
+    e.preventDefault();
+    onEnd();
+  });
 }
-bind(leftBtn = document.getElementById("left"), "left");
-bind(rightBtn = document.getElementById("right"), "right");
-bind(jumpBtn = document.getElementById("jump"), "jump");
 
-/* LOOP */
+bindButton(btnLeft, () => moveLeft = true, () => moveLeft = false);
+bindButton(btnRight, () => moveRight = true, () => moveRight = false);
+bindButton(btnJump,
+  () => {
+    if (player.onGround) {
+      player.vy = JUMP_FORCE;
+      player.onGround = false;
+    }
+  },
+  () => {}
+);
+
+/* UPDATE */
 function update() {
   player.vx = 0;
-  if (left) player.vx = -SPEED;
-  if (right) player.vx = SPEED;
-
-  if (jump && player.onGround) {
-    player.vy = JUMP;
-    player.onGround = false;
-  }
+  if (moveLeft) player.vx = -SPEED;
+  if (moveRight) player.vx = SPEED;
 
   player.vy += GRAVITY;
   player.x += player.vx;
@@ -185,7 +201,7 @@ function update() {
     if (
       player.x < p.x + p.w &&
       player.x + player.w > p.x &&
-      player.y + player.h < p.y + 10 &&
+      player.y + player.h <= p.y + 10 &&
       player.y + player.h + player.vy >= p.y
     ) {
       player.y = p.y - player.h;
@@ -214,6 +230,7 @@ function update() {
   cameraX = player.x - 150;
 }
 
+/* DRAW */
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -242,6 +259,7 @@ function draw() {
   ctx.fillRect(player.x - cameraX, player.y, player.w, player.h);
 }
 
+/* LOOP */
 function loop() {
   update();
   draw();
