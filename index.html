@@ -59,7 +59,6 @@ canvas{
 </div>
 
 <script>
-/* CANVAS */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const proposal = document.getElementById("proposal");
@@ -95,7 +94,7 @@ const player = {
 /* CAMERA */
 let camX = 0;
 
-/* TOUCH CONTROLS (MULTITOUCH) */
+/* TOUCH CONTROLS (3 ZONAS + MULTITOUCH) */
 let moveLeft = false;
 let moveRight = false;
 let wantJump = false;
@@ -144,26 +143,31 @@ function update(){
   player.x += player.vx;
   player.y += player.vy;
 
-  // chão
+  /* chão */
   if (player.y + player.h >= groundY) {
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
   }
 
-  // colisão com canos
+  /* colisão com canos (CORRIGIDA) */
   pipes.forEach(p => {
-    if (
+    const pipeTop = groundY - p.h;
+
+    const horizontal =
       player.x < p.x + p.w &&
-      player.x + player.w > p.x &&
-      player.y + player.h > groundY - p.h
-    ) {
+      player.x + player.w > p.x;
+
+    const feetBelowTop =
+      player.y + player.h > pipeTop + 5;
+
+    if (horizontal && feetBelowTop) {
       if (player.vx > 0) player.x = p.x - player.w;
       if (player.vx < 0) player.x = p.x + p.w;
     }
   });
 
-  // castelo
+  /* castelo */
   if (player.x + player.w > castle.x) {
     proposal.style.display = "flex";
   }
@@ -177,37 +181,33 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // chão
+  /* chão */
   ctx.fillStyle = "#7c4a16";
   ctx.fillRect(-camX, groundY, 3000, 90);
 
-  // canos
+  /* canos */
   pipes.forEach(p => {
     ctx.fillStyle = "#2ecc71";
     ctx.fillRect(p.x - camX, groundY - p.h, p.w, p.h);
   });
 
-  // castelo
+  /* castelo */
   ctx.fillStyle = "#999";
   ctx.fillRect(castle.x - camX, groundY - castle.h, castle.w, castle.h);
 
-  // MARIO (pixel)
+  /* MARIO */
   const x = player.x - camX;
   const y = player.y;
 
-  ctx.fillStyle = "#ff0000"; // chapéu
+  ctx.fillStyle = "#ff0000";
   ctx.fillRect(x+6, y, 20, 8);
-
-  ctx.fillStyle = "#f1c27d"; // rosto
+  ctx.fillStyle = "#f1c27d";
   ctx.fillRect(x+8, y+8, 16, 12);
-
-  ctx.fillStyle = "#ff0000"; // camisa
+  ctx.fillStyle = "#ff0000";
   ctx.fillRect(x+4, y+20, 24, 12);
-
-  ctx.fillStyle = "#0066ff"; // macacão
+  ctx.fillStyle = "#0066ff";
   ctx.fillRect(x+4, y+32, 24, 12);
-
-  ctx.fillStyle = "#000"; // pés
+  ctx.fillStyle = "#000";
   ctx.fillRect(x+6+(player.step<10?0:8), y+44, 6, 4);
   ctx.fillRect(x+20-(player.step<10?0:8), y+44, 6, 4);
 }
