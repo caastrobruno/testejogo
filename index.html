@@ -69,38 +69,52 @@ const player={
 
 let cam=0,score=0;
 
-/* TOUCH CONTROL (3 PARTS OF SCREEN) */
+/* MULTITOUCH – 3 PARTS OF SCREEN */
+let moveLeft = false;
+let moveRight = false;
+let wantJump = false;
+
 canvas.addEventListener("touchstart", e => {
-const t = e.touches[0];
-const x = t.clientX;
-const w = innerWidth;
+  e.preventDefault();
+  moveLeft = moveRight = wantJump = false;
 
+  const w = innerWidth;
+  const third = w / 3;
 
-const third = w / 3;
+  for (const t of e.touches) {
+    const x = t.clientX;
 
+    if (x < third) {
+      moveLeft = true;
+      player.dir = -1;
+    } 
+    else if (x < third * 2) {
+      wantJump = true;
+    } 
+    else {
+      moveRight = true;
+      player.dir = 1;
+    }
+  }
 
-// ESQUERDA
-if (x < third) {
-player.vx = -SPEED;
-player.dir = -1;
-}
-// CENTRO (PULO)
-else if (x < third * 2) {
-if (player.on) {
-player.vy = JUMP;
-player.on = false;
-}
-}
-// DIREITA
-else {
-player.vx = SPEED;
-player.dir = 1;
-}
+  if (wantJump && player.on) {
+    player.vy = JUMP;
+    player.on = false;
+  }
 });
 
+canvas.addEventListener("touchend", e => {
+  moveLeft = moveRight = wantJump = false;
 
-canvas.addEventListener("touchend", () => {
-player.vx = 0;
+  const w = innerWidth;
+  const third = w / 3;
+
+  for (const t of e.touches) {
+    const x = t.clientX;
+
+    if (x < third) moveLeft = true;
+    else if (x > third * 2) moveRight = true;
+  }
 });
 
 /* WORLD */
@@ -125,7 +139,7 @@ const castle={x:1400,w:180,h:200};
 /* UPDATE */
 function update(){
   player.vy+=GRAVITY;
-  player.x+=player.vx;
+  player.vx = moveLeft ? -SPEED : moveRight ? SPEED : 0;
   player.y+=player.vy;
 
   if(player.y+player.h>=groundY){
@@ -230,4 +244,5 @@ function no(){
 
 </body>
 </html>
+
 
