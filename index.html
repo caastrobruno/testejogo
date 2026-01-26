@@ -1,3 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Mini Mario World</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #5c94fc;
+    font-family: Arial, sans-serif;
+  }
+  canvas {
+    display: block;
+  }
+  #proposal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-direction: column;
+    z-index: 10;
+  }
+  #proposal button {
+    margin: 10px;
+    padding: 12px 24px;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  #final {
+    margin-top: 20px;
+    font-size: 20px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="proposal">
+  <h1>💍 Quer passar dessa fase comigo?</h1>
+  <div>
+    <button onclick="yes()">Sim ❤️</button>
+    <button onclick="no()">Não 😅</button>
+  </div>
+  <div id="final"></div>
+</div>
+
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -11,7 +64,7 @@ function resize(){
 resize();
 addEventListener("resize", resize);
 
-/* CONSTANTS */
+/* CONSTANTES */
 const GRAVITY = 0.9;
 const SPEED = 5;
 const JUMP = -18;
@@ -31,43 +84,37 @@ const player = {
 };
 
 /* CONTROLES */
-let left=false, right=false;
+let left = false, right = false;
 
 /* DOUBLE TAP */
 let lastJumpTap = 0;
 const DOUBLE_TAP_TIME = 300;
 
-/* MOVIMENTO (sem pulo aqui!) */
+/* MOVIMENTO */
 function readTouches(touches){
   left = right = false;
   const third = innerWidth / 3;
 
   for(const t of touches){
     if(t.clientX < third) left = true;
-    else if(t.clientX > third*2) right = true;
+    else if(t.clientX > third * 2) right = true;
   }
 }
 
-/* TOUCH EVENTS */
-canvas.addEventListener("touchstart",e=>{
+/* TOUCH */
+canvas.addEventListener("touchstart", e => {
   e.preventDefault();
-
   const t = e.changedTouches[0];
   const third = innerWidth / 3;
 
-  // ÁREA DO PULO (CENTRO)
-  if(t.clientX >= third && t.clientX <= third*2 && player.onGround){
+  if (t.clientX >= third && t.clientX <= third * 2 && player.onGround) {
     const now = Date.now();
-
-    if(now - lastJumpTap < DOUBLE_TAP_TIME){
-      // SALTO LONGO
+    if (now - lastJumpTap < DOUBLE_TAP_TIME) {
       player.vy = LONG_JUMP;
       player.vx += player.dir * LONG_JUMP_PUSH;
     } else {
-      // PULO NORMAL
       player.vy = JUMP;
     }
-
     player.onGround = false;
     lastJumpTap = now;
   }
@@ -75,24 +122,23 @@ canvas.addEventListener("touchstart",e=>{
   readTouches(e.touches);
 });
 
-canvas.addEventListener("touchmove",e=>{
+canvas.addEventListener("touchmove", e => {
   e.preventDefault();
   readTouches(e.touches);
 });
 
-canvas.addEventListener("touchend",e=>{
+canvas.addEventListener("touchend", e => {
   e.preventDefault();
   readTouches(e.touches);
 });
 
-/* WORLD */
+/* MUNDO */
 const pipes = [
   {x: 500, w: 44, h: 110},
   {x: 900, w: 44, h: 160}
 ];
 
 const castle = { x: 1300, w: 220, h: 200 };
-
 let camX = 0;
 
 /* UPDATE */
@@ -123,7 +169,7 @@ function update(){
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    if(
+    if (
       overlapX &&
       player.vy >= 0 &&
       player.y + player.h >= pipeTop &&
@@ -133,14 +179,14 @@ function update(){
       player.vy = 0;
       player.onGround = true;
     }
-    else if(overlapX && player.y + player.h > pipeTop){
+    else if (overlapX && player.y + player.h > pipeTop){
       if(player.vx > 0) player.x = p.x - player.w;
       if(player.vx < 0) player.x = p.x + p.w;
     }
   });
 
   if(player.x + player.w > castle.x + 60){
-    document.getElementById("proposal").style.display="flex";
+    document.getElementById("proposal").style.display = "flex";
   }
 
   camX = player.x - 150;
@@ -151,7 +197,7 @@ function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX, groundY, 4000, 90);
+  ctx.fillRect(-camX, groundY, 5000, 90);
 
   pipes.forEach(p=>{
     const x = p.x - camX;
@@ -173,39 +219,25 @@ function draw(){
   ctx.fillStyle="#b0b0b0";
   ctx.fillRect(cx, cy, castle.w, castle.h);
 
-  ctx.fillStyle="#9a9a9a";
-  for(let y=cy+20;y<cy+castle.h;y+=20){
-    for(let x=cx;x<cx+castle.w;x+=40){
-      ctx.fillRect(x+2,y+2,36,16);
-    }
-  }
-
-  ctx.fillStyle="#8e8e8e";
-  ctx.fillRect(cx-30, cy+40, 30, castle.h-40);
-  ctx.fillRect(cx+castle.w, cy+40, 30, castle.h-40);
-
-  ctx.fillStyle="#777";
-  for(let i=0;i<castle.w;i+=30){
-    ctx.fillRect(cx+i, cy-12, 18, 12);
-  }
-
   ctx.fillStyle="#333";
-  ctx.fillRect(cx+castle.w/2-20, groundY-60, 40, 60);
+  ctx.fillRect(cx + castle.w/2 - 20, groundY - 60, 40, 60);
 
   ctx.fillStyle="#000";
-  ctx.fillRect(cx+castle.w/2, cy-50, 4, 50);
+  ctx.fillRect(cx + castle.w/2, cy - 50, 4, 50);
   ctx.fillStyle="red";
-  ctx.fillRect(cx+castle.w/2+4, cy-50, 22, 14);
+  ctx.fillRect(cx + castle.w/2 + 4, cy - 50, 22, 14);
 
-  const x=player.x-camX,y=player.y;
+  const px = player.x - camX;
+  const py = player.y;
+
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(x+6,y,20,8);
+  ctx.fillRect(px+6, py, 20, 8);
   ctx.fillStyle="#f1c27d";
-  ctx.fillRect(x+8,y+8,16,12);
+  ctx.fillRect(px+8, py+8, 16, 12);
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(x+4,y+20,24,12);
+  ctx.fillRect(px+4, py+20, 24, 12);
   ctx.fillStyle="#0066ff";
-  ctx.fillRect(x+4,y+32,24,12);
+  ctx.fillRect(px+4, py+32, 24, 12);
 }
 
 /* LOOP */
@@ -216,6 +248,7 @@ function loop(){
 }
 loop();
 
+/* FINAL */
 function yes(){
   document.getElementById("final").innerText =
     "🎉 Player 2 desbloqueado para a vida toda 🎉";
@@ -225,3 +258,6 @@ function no(){
     "❌ Essa fase não aceita essa escolha 😏";
 }
 </script>
+
+</body>
+</html>
