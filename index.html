@@ -11,30 +11,18 @@ html, body {
   background: #5c94fc;
   touch-action: none;
 }
-canvas {
-  display: block;
-}
-#proposal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.8);
-  color: white;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-}
+canvas { display: block; }
 </style>
 </head>
 <body>
 
 <canvas id="game"></canvas>
-<div id="proposal">🎉 FIM DO JOGO 🎉</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+/* RESIZE */
 let groundY = 0;
 function resize(){
   canvas.width = innerWidth;
@@ -49,18 +37,18 @@ const GRAVITY = 0.9;
 const SPEED = 5;
 const JUMP = -18;
 const LONG_JUMP = -26;
-const LONG_JUMP_PUSH = 6;
+const LONG_PUSH = 6;
 const DOUBLE_TAP_TIME = 250;
 
 /* PLAYER */
 const player = {
   x: 100,
-  y: 0,
+  y: groundY - 48,
   w: 32,
   h: 48,
   vx: 0,
   vy: 0,
-  onGround: false,
+  onGround: true,
   dir: 1
 };
 
@@ -68,15 +56,13 @@ const player = {
 let left = false;
 let right = false;
 
-/* CONTROLE DE PULO */
-let jumpPending = false;
-let jumpTapTime = 0;
+/* DUPLO TOQUE */
+let lastJumpTap = 0;
 
 /* MOVIMENTO */
 function readTouches(touches){
   left = right = false;
   const third = innerWidth / 3;
-
   for(const t of touches){
     if(t.clientX < third) left = true;
     else if(t.clientX > third * 2) right = true;
@@ -88,23 +74,23 @@ canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
   const t = e.changedTouches[0];
   const third = innerWidth / 3;
-  const now = performance.now();
+  const now = Date.now();
 
   // ÁREA DO PULO
   if(t.clientX >= third && t.clientX <= third * 2 && player.onGround){
 
-    // SEGUNDO TOQUE → SALTO LONGO
-    if(jumpPending && now - jumpTapTime < DOUBLE_TAP_TIME){
+    // DUPLO TOQUE → SALTO LONGO
+    if(now - lastJumpTap < DOUBLE_TAP_TIME){
       player.vy = LONG_JUMP;
-      player.vx += player.dir * LONG_JUMP_PUSH;
-      player.onGround = false;
-      jumpPending = false;
-      return;
+      player.vx += player.dir * LONG_PUSH;
+    }
+    // TOQUE ÚNICO → PULO NORMAL
+    else {
+      player.vy = JUMP;
     }
 
-    // PRIMEIRO TOQUE (ARMA O PULO)
-    jumpPending = true;
-    jumpTapTime = now;
+    player.onGround = false;
+    lastJumpTap = now;
   }
 
   readTouches(e.touches);
@@ -114,7 +100,6 @@ canvas.addEventListener("touchmove", e=>{
   e.preventDefault();
   readTouches(e.touches);
 });
-
 canvas.addEventListener("touchend", e=>{
   e.preventDefault();
   readTouches(e.touches);
@@ -126,18 +111,10 @@ const pipes = [
   {x: 900, w: 44, h: 160}
 ];
 
-const castle = { x: 1300, w: 220, h: 200 };
 let camX = 0;
 
 /* UPDATE */
 function update(){
-
-  // EXECUTA PULO NORMAL SE NÃO HOUVE SEGUNDO TOQUE
-  if(jumpPending && performance.now() - jumpTapTime > DOUBLE_TAP_TIME){
-    player.vy = JUMP;
-    player.onGround = false;
-    jumpPending = false;
-  }
 
   if(left){
     player.vx = -SPEED;
@@ -148,3 +125,71 @@ function update(){
   } else {
     player.vx = 0;
   }
+
+  player.vy += GRAVITY;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // CHÃO
+  if(player.y + player.h >= groundY){
+    player.y = groundY - player.h;
+    player.vy = 0;
+    player.onGround = true;
+  }
+
+  // CANOS (ficar em cima)
+  pipes.forEach(p=>{
+    const top = groundY - p.h;
+    const hitX = player.x < p.x + p.w && player.x + player.w > p.x;
+
+    if(hitX && player.vy >= 0 &&
+       player.y + player.h >= top &&
+       player.y + player.h - player.vy < top){
+      player.y = top - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+  });
+
+  camX = player.x - 150;
+}
+
+/* DRAW */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // CHÃO
+  ctx.fillStyle="#7c4a16";
+  ctx.fillRect(-camX, groundY, 4000, 90);
+
+  // CANOS
+  pipes.forEach(p=>{
+    const x = p.x - camX;
+    const y = groundY - p.h;
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(x-6, y, p.w+12, 16);
+    ctx.fillRect(x, y+14, p.w, p.h-14);
+  });
+
+  // PLAYER
+  const px = player.x - camX;
+  const py = player.y;
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(px+6,py,20,8);
+  ctx.fillStyle="#f1c27d";
+  ctx.fillRect(px+8,py+8,16,12);
+  ctx.fillStyle="#0066ff";
+  ctx.fillRect(px+4,py+32,24,12);
+}
+
+/* LOOP */
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
