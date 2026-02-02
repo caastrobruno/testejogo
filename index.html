@@ -2,17 +2,15 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Jogo Teste</title>
+<title>Jogo</title>
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #5c94fc;
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#5c94fc;
 }
-canvas {
-  display: block;
-}
+canvas{display:block;}
 </style>
 </head>
 <body>
@@ -20,92 +18,98 @@ canvas {
 <canvas id="game"></canvas>
 
 <script>
-/* CANVAS */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+/* RESIZE */
 function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
 }
 resize();
-window.addEventListener("resize", resize);
+addEventListener("resize", resize);
 
 /* CONSTANTES */
 const GRAVITY = 0.8;
+const SPEED = 5;
 const JUMP = -16;
 const LONG_JUMP = -24;
-const SPEED = 5;
-const GROUND = () => canvas.height - 80;
 const DOUBLE_TAP_TIME = 250;
 
 /* PLAYER */
 const player = {
-  x: 100,
-  y: 0,
-  w: 30,
-  h: 45,
-  vx: 0,
-  vy: 0,
-  onGround: false,
-  lastJumpTime: 0,
-  longUsed: false,
-  dir: 1
+  x:100,
+  y:0,
+  w:30,
+  h:45,
+  vx:0,
+  vy:0,
+  onGround:false,
+  lastJumpTime:0,
+  longUsed:false,
+  dir:1
 };
 
+const groundY = () => canvas.height - 80;
+
 /* CONTROLES */
-let left = false;
-let right = false;
+let left=false;
+let right=false;
 
-/* TOUCH */
-canvas.addEventListener("touchstart", e => {
+/* TOUCH START */
+canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
-  const t = e.changedTouches[0];
-  const third = canvas.width / 3;
-  const now = Date.now();
 
-  // ESQUERDA / DIREITA
-  if(t.clientX < third) left = true;
-  else if(t.clientX > third * 2) right = true;
+  for(const t of e.changedTouches){
+    const third = canvas.width / 3;
+    const now = Date.now();
 
-  // PULO (CENTRO)
-  else {
-    if(player.onGround){
-      player.vy = JUMP;
-      player.onGround = false;
-      player.lastJumpTime = now;
-      player.longUsed = false;
+    if(t.clientX < third){
+      left = true;
+      player.dir = -1;
     }
-    else if(
-      !player.longUsed &&
-      now - player.lastJumpTime < DOUBLE_TAP_TIME &&
-      player.vy < 0
-    ){
-      player.vy = LONG_JUMP;
-      player.vx += player.dir * 4;
-      player.longUsed = true;
+    else if(t.clientX > third*2){
+      right = true;
+      player.dir = 1;
+    }
+    else{
+      // PULO
+      if(player.onGround){
+        player.vy = JUMP;
+        player.onGround = false;
+        player.lastJumpTime = now;
+        player.longUsed = false;
+      }
+      else if(
+        !player.longUsed &&
+        now - player.lastJumpTime < DOUBLE_TAP_TIME
+      ){
+        player.vy = LONG_JUMP;
+        player.longUsed = true;
+      }
     }
   }
 });
 
-canvas.addEventListener("touchend", e => {
+/* TOUCH END */
+canvas.addEventListener("touchend", e=>{
   e.preventDefault();
-  left = right = false;
+  left = false;
+  right = false;
 });
 
 /* UPDATE */
 function update(){
   player.vx = 0;
-  if(left){ player.vx = -SPEED; player.dir = -1; }
-  if(right){ player.vx = SPEED; player.dir = 1; }
+  if(left) player.vx = -SPEED;
+  if(right) player.vx = SPEED;
 
   player.vy += GRAVITY;
   player.x += player.vx;
   player.y += player.vy;
 
-  // CHÃO
-  if(player.y + player.h >= GROUND()){
-    player.y = GROUND() - player.h;
+  if(player.y + player.h >= groundY()){
+    player.y = groundY() - player.h;
     player.vy = 0;
     player.onGround = true;
     player.longUsed = false;
@@ -116,13 +120,11 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // chão
-  ctx.fillStyle = "#7c4a16";
-  ctx.fillRect(0, GROUND(), canvas.width, 80);
+  ctx.fillStyle="#7c4a16";
+  ctx.fillRect(0,groundY(),canvas.width,80);
 
-  // player
-  ctx.fillStyle = "red";
-  ctx.fillRect(player.x, player.y, player.w, player.h);
+  ctx.fillStyle="red";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
 }
 
 /* LOOP */
