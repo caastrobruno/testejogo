@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Mini Mario</title>
+<title>Pedido Mario</title>
 <style>
   html,body{
     margin:0;
     padding:0;
     overflow:hidden;
     background:#5c94fc;
-    touch-action:none;
   }
-  canvas{ display:block; }
+  canvas{
+    display:block;
+  }
 </style>
 </head>
 <body>
@@ -20,7 +21,7 @@
 <canvas id="game"></canvas>
 
 <script>
-/* CANVAS */
+/* ================= SETUP ================= */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -33,164 +34,16 @@ function resize(){
 resize();
 addEventListener("resize", resize);
 
-/* CONSTANTES */
+/* ================= CONSTANTES ================= */
 const GRAVITY = 0.9;
 const SPEED = 5;
-const JUMP = -18;
-const LONG_JUMP = -26;
-const LONG_PUSH = 5;
-const DOUBLE_TAP_TIME = 280;
+const JUMP = -16;
+const LONG_JUMP = -20;
+const LONG_JUMP_PUSH = 5;
 
-/* PLAYER */
+/* ================= PLAYER ================= */
 const player = {
-  x:100, y:0,
-  w:32, h:48,
-  vx:0, vy:0,
-  dir:1,
-  onGround:false,
-  jumpCount:0,
-  jumpTaps:0,
-  jumpTimer:null
-};
-
-/* CONTROLES */
-let left=false, right=false;
-
-/* TOQUES */
-function readTouches(touches){
-  left = right = false;
-  const third = innerWidth/3;
-  for(const t of touches){
-    if(t.clientX < third) left = true;
-    if(t.clientX > third*2) right = true;
-  }
-}
-
-canvas.addEventListener("touchstart",e=>{
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  const third = innerWidth/3;
-
-  /* ÁREA CENTRAL = PULO */
-  if(t.clientX >= third && t.clientX <= third*2){
-
-    if(player.jumpCount >= 2) return;
-
-    player.jumpTaps++;
-
-    /* PULO NORMAL IMEDIATO */
-    if(player.jumpTaps === 1){
-      player.vy = JUMP;
-      player.jumpCount++;
-
-      player.jumpTimer = setTimeout(()=>{
-        player.jumpTaps = 0;
-      }, DOUBLE_TAP_TIME);
-    }
-
-    /* SALTO LONGO */
-    if(player.jumpTaps === 2){
-      clearTimeout(player.jumpTimer);
-      player.vy = LONG_JUMP;
-      player.vx += player.dir * LONG_PUSH;
-      player.jumpCount++;
-      player.jumpTaps = 0;
-    }
-  }
-
-  readTouches(e.touches);
-});
-
-canvas.addEventListener("touchmove",e=>{
-  e.preventDefault();
-  readTouches(e.touches);
-});
-canvas.addEventListener("touchend",e=>{
-  e.preventDefault();
-  readTouches(e.touches);
-});
-
-/* MUNDO */
-const pipes = [
-  {x:500, w:44, h:120},
-  {x:900, w:44, h:160}
-];
-
-/* UPDATE */
-function update(){
-
-  if(left){
-    player.vx = -SPEED;
-    player.dir = -1;
-  } else if(right){
-    player.vx = SPEED;
-    player.dir = 1;
-  } else {
-    player.vx = 0;
-  }
-
-  player.vy += GRAVITY;
-  player.x += player.vx;
-  player.y += player.vy;
-
-  /* CHÃO */
-  if(player.y + player.h >= groundY){
-    player.y = groundY - player.h;
-    player.vy = 0;
-    player.onGround = true;
-    player.jumpCount = 0;
-  }
-
-  /* CANOS */
-  pipes.forEach(p=>{
-    const top = groundY - p.h;
-    const hitX =
-      player.x < p.x + p.w &&
-      player.x + player.w > p.x;
-
-    /* EM CIMA */
-    if(hitX &&
-      player.vy >= 0 &&
-      player.y + player.h >= top &&
-      player.y + player.h - player.vy < top){
-        player.y = top - player.h;
-        player.vy = 0;
-        player.jumpCount = 0;
-    }
-    /* LADO */
-    else if(hitX && player.y + player.h > top){
-      if(player.vx > 0) player.x = p.x - player.w;
-      if(player.vx < 0) player.x = p.x + p.w;
-    }
-  });
-}
-
-/* DRAW */
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  /* CHÃO */
-  ctx.fillStyle="#7c4a16";
-  ctx.fillRect(0, groundY, canvas.width, 90);
-
-  /* CANOS */
-  pipes.forEach(p=>{
-    ctx.fillStyle="#2ecc71";
-    ctx.fillRect(p.x, groundY-p.h+14, p.w, p.h-14);
-    ctx.fillRect(p.x-6, groundY-p.h, p.w+12, 16);
-  });
-
-  /* PLAYER */
-  ctx.fillStyle="#ff0000";
-  ctx.fillRect(player.x+6,player.y,20,8);
-  ctx.fillStyle="#f1c27d";
-  ctx.fillRect(player.x+8,player.y+8,16,12);
-  ctx.fillStyle="#ff0000";
-  ctx.fillRect(player.x+4,player.y+20,24,12);
-  ctx.fillStyle="#0066ff";
-  ctx.fillRect(player.x+4,player.y+32,24,12);
-}
-
-/* LOOP */
-function loop(){
-  upd
+  x: 100,
+  y: groundY - 48,
+  w: 32,
+  h: 48,
