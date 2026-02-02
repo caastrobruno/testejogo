@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
 <meta charset="UTF-8">
-<title>Jogo Plataforma</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Mini Mario</title>
 <style>
   html,body{
     margin:0;
     padding:0;
     overflow:hidden;
-    background:#4da6ff;
+    background:#5c94fc;
+    touch-action:none;
   }
-  canvas{
-    display:block;
-  }
+  canvas{ display:block; }
 </style>
 </head>
 <body>
@@ -24,9 +24,11 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+let groundY = 0;
 function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
+  groundY = canvas.height - 90;
 }
 resize();
 addEventListener("resize", resize);
@@ -36,67 +38,62 @@ const GRAVITY = 0.9;
 const SPEED = 5;
 const JUMP = -18;
 const LONG_JUMP = -26;
-const LONG_JUMP_PUSH = 5;
+const LONG_PUSH = 5;
 const DOUBLE_TAP_TIME = 280;
-
-/* CHÃO */
-const groundHeight = 90;
 
 /* PLAYER */
 const player = {
-  x: 100,
-  y: 0,
-  w: 32,
-  h: 48,
-  vx: 0,
-  vy: 0,
-  onGround: false,
-  dir: 1,
-  jumpTaps: 0,
-  jumpTimer: null
+  x:100, y:0,
+  w:32, h:48,
+  vx:0, vy:0,
+  dir:1,
+  onGround:false,
+  jumpCount:0,
+  jumpTaps:0,
+  jumpTimer:null
 };
 
 /* CONTROLES */
-let left = false;
-let right = false;
+let left=false, right=false;
 
-/* TOUCH MOVIMENTO */
+/* TOQUES */
 function readTouches(touches){
   left = right = false;
-  const third = innerWidth / 3;
-
+  const third = innerWidth/3;
   for(const t of touches){
     if(t.clientX < third) left = true;
-    else if(t.clientX > third*2) right = true;
+    if(t.clientX > third*2) right = true;
   }
 }
 
-/* TOUCH START */
-canvas.addEventListener("touchstart", e=>{
+canvas.addEventListener("touchstart",e=>{
   e.preventDefault();
   const t = e.changedTouches[0];
-  const third = innerWidth / 3;
+  const third = innerWidth/3;
 
-  // ÁREA CENTRAL = PULO
+  /* ÁREA CENTRAL = PULO */
   if(t.clientX >= third && t.clientX <= third*2){
+
+    if(player.jumpCount >= 2) return;
+
     player.jumpTaps++;
 
+    /* PULO NORMAL IMEDIATO */
     if(player.jumpTaps === 1){
-      // pulo IMEDIATO
       player.vy = JUMP;
-      player.onGround = false;
+      player.jumpCount++;
 
       player.jumpTimer = setTimeout(()=>{
         player.jumpTaps = 0;
       }, DOUBLE_TAP_TIME);
     }
 
+    /* SALTO LONGO */
     if(player.jumpTaps === 2){
       clearTimeout(player.jumpTimer);
-
-      // SALTO LONGO
       player.vy = LONG_JUMP;
-      player.vx += player.dir * LONG_JUMP_PUSH;
+      player.vx += player.dir * LONG_PUSH;
+      player.jumpCount++;
       player.jumpTaps = 0;
     }
   }
@@ -104,135 +101,96 @@ canvas.addEventListener("touchstart", e=>{
   readTouches(e.touches);
 });
 
-canvas.addEventListener("touchmove", e=>{
+canvas.addEventListener("touchmove",e=>{
   e.preventDefault();
   readTouches(e.touches);
 });
-
-canvas.addEventListener("touchend", e=>{
+canvas.addEventListener("touchend",e=>{
   e.preventDefault();
   readTouches(e.touches);
 });
 
 /* MUNDO */
 const pipes = [
-  {x: 500, w: 44, h: 120},
-  {x: 900, w: 44, h: 160},
-  {x: 1250, w: 44, h: 100}
+  {x:500, w:44, h:120},
+  {x:900, w:44, h:160}
 ];
-
-let camX = 0;
 
 /* UPDATE */
 function update(){
-  // movimento horizontal
+
   if(left){
     player.vx = -SPEED;
     player.dir = -1;
-  }else if(right){
+  } else if(right){
     player.vx = SPEED;
     player.dir = 1;
-  }else{
+  } else {
     player.vx = 0;
   }
 
-  // física
   player.vy += GRAVITY;
   player.x += player.vx;
   player.y += player.vy;
 
-  const groundY = canvas.height - groundHeight;
-
-  // chão REAL
+  /* CHÃO */
   if(player.y + player.h >= groundY){
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
-    player.jumpTaps = 0;
-  }else{
-    player.onGround = false;
+    player.jumpCount = 0;
   }
 
-  // colisão com canos
+  /* CANOS */
   pipes.forEach(p=>{
     const top = groundY - p.h;
-
-    const overlapX =
+    const hitX =
       player.x < p.x + p.w &&
       player.x + player.w > p.x;
 
-    // aterrissar EM CIMA do cano
-    if(
-      overlapX &&
+    /* EM CIMA */
+    if(hitX &&
       player.vy >= 0 &&
       player.y + player.h >= top &&
-      player.y + player.h - player.vy < top
-    ){
-      player.y = top - player.h;
-      player.vy = 0;
-      player.onGround = true;
-      player.jumpTaps = 0;
+      player.y + player.h - player.vy < top){
+        player.y = top - player.h;
+        player.vy = 0;
+        player.jumpCount = 0;
     }
-    // colisão lateral (NÃO mexe no pulo)
-    else if(
-      overlapX &&
-      player.y + player.h > top
-    ){
+    /* LADO */
+    else if(hitX && player.y + player.h > top){
       if(player.vx > 0) player.x = p.x - player.w;
       if(player.vx < 0) player.x = p.x + p.w;
     }
   });
-
-  camX = player.x - 150;
 }
 
 /* DRAW */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  const groundY = canvas.height - groundHeight;
-
-  // chão
+  /* CHÃO */
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX, groundY, 5000, groundHeight);
+  ctx.fillRect(0, groundY, canvas.width, 90);
 
-  // canos
+  /* CANOS */
   pipes.forEach(p=>{
-    const x = p.x - camX;
-    const y = groundY - p.h;
-
     ctx.fillStyle="#2ecc71";
-    ctx.fillRect(x, y+14, p.w, p.h-14);
-    ctx.fillStyle="#27ae60";
-    ctx.fillRect(x + p.w - 6, y+14, 6, p.h-14);
-    ctx.fillStyle="#2ecc71";
-    ctx.fillRect(x - 6, y, p.w + 12, 16);
-    ctx.fillStyle="#1e8449";
-    ctx.fillRect(x - 6, y+12, p.w + 12, 4);
+    ctx.fillRect(p.x, groundY-p.h+14, p.w, p.h-14);
+    ctx.fillRect(p.x-6, groundY-p.h, p.w+12, 16);
   });
 
-  // player
-  const px = player.x - camX;
-  const py = player.y;
-
+  /* PLAYER */
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(px+6, py, 20, 8);
+  ctx.fillRect(player.x+6,player.y,20,8);
   ctx.fillStyle="#f1c27d";
-  ctx.fillRect(px+8, py+8, 16, 12);
+  ctx.fillRect(player.x+8,player.y+8,16,12);
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(px+4, py+20, 24, 12);
+  ctx.fillRect(player.x+4,player.y+20,24,12);
   ctx.fillStyle="#0066ff";
-  ctx.fillRect(px+4, py+32, 24, 12);
+  ctx.fillRect(player.x+4,player.y+32,24,12);
 }
 
 /* LOOP */
 function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-loop();
-</script>
-
-</body>
-</html>
+  upd
