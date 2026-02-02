@@ -38,12 +38,8 @@ const DOUBLE_TAP_TIME = 250;
 
 /* PLAYER */
 const player = {
-  x:100,
-  y:0,
-  w:30,
-  h:45,
-  vx:0,
-  vy:0,
+  x:100,y:0,w:30,h:45,
+  vx:0,vy:0,
   onGround:false,
   lastJumpTime:0,
   longUsed:false,
@@ -53,189 +49,158 @@ const player = {
 const groundY = () => canvas.height - 80;
 
 /* CONTROLES (NÃO MEXER) */
-let leftFinger = null;
-let rightFinger = null;
-let jumpFinger = null;
+let leftFinger=null,rightFinger=null,jumpFinger=null;
 
-canvas.addEventListener("touchstart", e=>{
+canvas.addEventListener("touchstart",e=>{
   e.preventDefault();
-
   for(const t of e.changedTouches){
-    const third = canvas.width / 3;
+    const third = canvas.width/3;
     const now = Date.now();
 
-    if(t.clientX < third && leftFinger === null){
-      leftFinger = t.identifier;
-      player.dir = -1;
+    if(t.clientX < third && leftFinger===null){
+      leftFinger=t.identifier; player.dir=-1;
     }
-    else if(t.clientX > third*2 && rightFinger === null){
-      rightFinger = t.identifier;
-      player.dir = 1;
+    else if(t.clientX > third*2 && rightFinger===null){
+      rightFinger=t.identifier; player.dir=1;
     }
-    else if(
-      t.clientX >= third &&
-      t.clientX <= third*2 &&
-      jumpFinger === null
-    ){
-      jumpFinger = t.identifier;
-
+    else if(t.clientX>=third && t.clientX<=third*2 && jumpFinger===null){
+      jumpFinger=t.identifier;
       if(player.onGround){
-        player.vy = JUMP;
-        player.onGround = false;
-        player.lastJumpTime = now;
-        player.longUsed = false;
-      }
-      else if(
-        !player.longUsed &&
-        now - player.lastJumpTime < DOUBLE_TAP_TIME
-      ){
-        player.vy = LONG_JUMP;
-        player.longUsed = true;
+        player.vy=JUMP; player.onGround=false;
+        player.lastJumpTime=now; player.longUsed=false;
+      }else if(!player.longUsed && now-player.lastJumpTime<DOUBLE_TAP_TIME){
+        player.vy=LONG_JUMP; player.longUsed=true;
       }
     }
   }
 });
 
-canvas.addEventListener("touchend", e=>{
+canvas.addEventListener("touchend",e=>{
   e.preventDefault();
   for(const t of e.changedTouches){
-    if(t.identifier === leftFinger) leftFinger = null;
-    if(t.identifier === rightFinger) rightFinger = null;
-    if(t.identifier === jumpFinger) jumpFinger = null;
+    if(t.identifier===leftFinger) leftFinger=null;
+    if(t.identifier===rightFinger) rightFinger=null;
+    if(t.identifier===jumpFinger) jumpFinger=null;
   }
 });
 
 /* COLISÃO */
 function collide(a,b){
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
+  return a.x<a.x+a.w && 
+         a.x+a.w>b.x &&
+         a.y<a.y+a.h &&
+         a.y+a.h>b.y;
 }
 
-/* OBSTÁCULOS */
-const pipes = [
-  {x:400,w:44,h:120},
-  {x:800,w:44,h:160}
+/* FASES */
+const levels = [
+  {
+    pipes:[
+      {x:400,w:44,h:120},
+      {x:800,w:44,h:160}
+    ],
+    turtles:[
+      {x:600,w:32,h:32,vx:-1.2,alive:true}
+    ],
+    flag:{x:1000}
+  },
+  {
+    pipes:[
+      {x:300,w:44,h:100},
+      {x:650,w:44,h:180},
+      {x:950,w:44,h:120}
+    ],
+    turtles:[
+      {x:500,w:32,h:32,vx:-1.5,alive:true},
+      {x:820,w:32,h:32,vx:1.2,alive:true}
+    ],
+    flag:{x:1200}
+  }
 ];
 
-const turtles = [
-  {x:600,w:32,h:32,vx:-1.2,alive:true}
-];
+let currentLevel = 0;
+let pipes=[], turtles=[], plants=[], flag={};
 
-const plants = pipes.map(p=>({
-  pipe:p,
-  offset:0,
-  dir:-1
-}));
+function loadLevel(i){
+  const lvl = levels[i];
+  pipes = JSON.parse(JSON.stringify(lvl.pipes));
+  turtles = JSON.parse(JSON.stringify(lvl.turtles));
+  plants = pipes.map(p=>({pipe:p,offset:0,dir:-1}));
+  flag = {x:lvl.flag.x,w:20,h:120};
+  player.x=100; player.y=0; player.vy=0;
+}
+
+loadLevel(0);
 
 /* RESET */
 function resetPlayer(){
-  player.x = 100;
-  player.y = 0;
-  player.vy = 0;
+  player.x=100; player.y=0; player.vy=0;
 }
 
 /* UPDATE */
 function update(){
-  const prevX = player.x;
-  const prevY = player.y;
+  const prevX=player.x, prevY=player.y;
+  player.vx=0;
 
-  player.vx = 0;
+  if(leftFinger!==null){player.vx=-SPEED;player.dir=-1;}
+  if(rightFinger!==null){player.vx=SPEED;player.dir=1;}
 
-  if(leftFinger !== null){
-    player.vx = -SPEED;
-    player.dir = -1;
-  }
-  if(rightFinger !== null){
-    player.vx = SPEED;
-    player.dir = 1;
-  }
+  player.vy+=GRAVITY;
+  player.x+=player.vx;
+  player.y+=player.vy;
 
-  player.vy += GRAVITY;
-  player.x += player.vx;
-  player.y += player.vy;
-
-  /* CHÃO */
-  if(player.y + player.h >= groundY()){
-    player.y = groundY() - player.h;
-    player.vy = 0;
-    player.onGround = true;
-    player.longUsed = false;
+  if(player.y+player.h>=groundY()){
+    player.y=groundY()-player.h;
+    player.vy=0; player.onGround=true; player.longUsed=false;
   }
 
-  /* CANOS (TOP + LADOS) */
   pipes.forEach(p=>{
-    const pipeBox = {
-      x:p.x,
-      y:groundY() - p.h,
-      w:p.w,
-      h:p.h
-    };
-
-    if(collide(player, pipeBox)){
-      // topo
-      if(
-        prevY + player.h <= pipeBox.y &&
-        player.vy >= 0
-      ){
-        player.y = pipeBox.y - player.h;
-        player.vy = 0;
-        player.onGround = true;
-      }
-      // esquerda
-      else if(
-        prevX + player.w <= pipeBox.x
-      ){
-        player.x = pipeBox.x - player.w;
-      }
-      // direita
-      else if(
-        prevX >= pipeBox.x + pipeBox.w
-      ){
-        player.x = pipeBox.x + pipeBox.w;
+    const box={x:p.x,y:groundY()-p.h,w:p.w,h:p.h};
+    if(player.x<box.x+box.w && player.x+player.w>box.x &&
+       player.y<box.y+box.h && player.y+player.h>box.y){
+      if(prevY+player.h<=box.y){
+        player.y=box.y-player.h; player.vy=0; player.onGround=true;
+      }else if(prevX+player.w<=box.x){
+        player.x=box.x-player.w;
+      }else if(prevX>=box.x+box.w){
+        player.x=box.x+box.w;
       }
     }
   });
 
-  /* TARTARUGAS */
   turtles.forEach(t=>{
     if(!t.alive) return;
-
-    t.x += t.vx;
-    t.y = groundY() - t.h;
-
-    if(collide(player,t)){
-      if(
-        player.vy > 0 &&
-        prevY + player.h <= t.y
-      ){
-        t.alive = false;
-        player.vy = JUMP/1.5;
-      } else {
-        resetPlayer();
-      }
+    t.x+=t.vx; t.y=groundY()-t.h;
+    if(player.x< t.x+t.w && player.x+player.w>t.x &&
+       player.y< t.y+t.h && player.y+player.h>t.y){
+      if(player.vy>0 && prevY+player.h<=t.y){
+        t.alive=false; player.vy=JUMP/1.5;
+      } else resetPlayer();
     }
   });
 
-  /* PLANTAS */
   plants.forEach(pl=>{
-    pl.offset += pl.dir * 0.5;
-    if(pl.offset < -40 || pl.offset > 0) pl.dir *= -1;
-
-    const plantBox = {
-      x:pl.pipe.x + 6,
-      y:groundY() - pl.pipe.h + pl.offset - 30,
-      w:pl.pipe.w - 12,
+    pl.offset+=pl.dir*0.5;
+    if(pl.offset<-40||pl.offset>0)pl.dir*=-1;
+    const box={
+      x:pl.pipe.x+6,
+      y:groundY()-pl.pipe.h+pl.offset-30,
+      w:pl.pipe.w-12,
       h:30
     };
-
-    if(collide(player,plantBox)){
+    if(player.x<box.x+box.w && player.x+player.w>box.x &&
+       player.y<box.y+box.h && player.y+player.h>box.y){
       resetPlayer();
     }
   });
+
+  /* BANDEIRA */
+  const flagBox={x:flag.x,y:groundY()-flag.h,w:flag.w,h:flag.h};
+  if(player.x+player.w>flagBox.x){
+    currentLevel++;
+    if(currentLevel<levels.length) loadLevel(currentLevel);
+    else alert("🎉 Fim do jogo!");
+  }
 }
 
 /* DRAW */
@@ -251,9 +216,10 @@ function draw(){
   });
 
   turtles.forEach(t=>{
-    if(!t.alive) return;
-    ctx.fillStyle="#27ae60";
-    ctx.fillRect(t.x,t.y,t.w,t.h);
+    if(t.alive){
+      ctx.fillStyle="#27ae60";
+      ctx.fillRect(t.x,t.y,t.w,t.h);
+    }
   });
 
   plants.forEach(pl=>{
@@ -265,6 +231,11 @@ function draw(){
       30
     );
   });
+
+  ctx.fillStyle="white";
+  ctx.fillRect(flag.x,groundY()-flag.h,flag.w,flag.h);
+  ctx.fillStyle="black";
+  ctx.fillRect(flag.x+flag.w,groundY()-flag.h+10,40,30);
 
   ctx.fillStyle="red";
   ctx.fillRect(player.x,player.y,player.w,player.h);
