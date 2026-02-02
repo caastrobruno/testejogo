@@ -38,26 +38,25 @@ const SPEED = 5;
 const JUMP = -18;
 const LONG_JUMP = -26;
 const LONG_PUSH = 6;
-const DOUBLE_TAP_TIME = 250;
+const DOUBLE_TAP_TIME = 280;
 
 /* PLAYER */
 const player = {
   x: 100,
-  y: groundY - 48,
+  y: 0,
   w: 32,
   h: 48,
   vx: 0,
   vy: 0,
-  onGround: true,
-  dir: 1
+  onGround: false,
+  dir: 1,
+  jumpStartedAt: 0,
+  longJumpUsed: false
 };
 
 /* CONTROLES */
 let left = false;
 let right = false;
-
-/* DUPLO TOQUE */
-let lastJumpTap = 0;
 
 /* MOVIMENTO */
 function readTouches(touches){
@@ -77,20 +76,26 @@ canvas.addEventListener("touchstart", e=>{
   const now = Date.now();
 
   // ÁREA DO PULO
-  if(t.clientX >= third && t.clientX <= third * 2 && player.onGround){
+  if(t.clientX >= third && t.clientX <= third * 2){
 
-    // DUPLO TOQUE → SALTO LONGO
-    if(now - lastJumpTap < DOUBLE_TAP_TIME){
+    // PRIMEIRO TOQUE → PULO NORMAL
+    if(player.onGround){
+      player.vy = JUMP;
+      player.onGround = false;
+      player.jumpStartedAt = now;
+      player.longJumpUsed = false;
+    }
+
+    // SEGUNDO TOQUE RÁPIDO → SALTO LONGO
+    else if(
+      !player.longJumpUsed &&
+      now - player.jumpStartedAt < DOUBLE_TAP_TIME &&
+      player.vy < 0
+    ){
       player.vy = LONG_JUMP;
       player.vx += player.dir * LONG_PUSH;
+      player.longJumpUsed = true;
     }
-    // TOQUE ÚNICO → PULO NORMAL
-    else {
-      player.vy = JUMP;
-    }
-
-    player.onGround = false;
-    lastJumpTap = now;
   }
 
   readTouches(e.touches);
@@ -135,9 +140,10 @@ function update(){
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
+    player.longJumpUsed = false;
   }
 
-  // CANOS (ficar em cima)
+  // CANOS
   pipes.forEach(p=>{
     const top = groundY - p.h;
     const hitX = player.x < p.x + p.w && player.x + player.w > p.x;
@@ -148,6 +154,7 @@ function update(){
       player.y = top - player.h;
       player.vy = 0;
       player.onGround = true;
+      player.longJumpUsed = false;
     }
   });
 
@@ -158,38 +165,5 @@ function update(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // CHÃO
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX, groundY, 4000, 90);
-
-  // CANOS
-  pipes.forEach(p=>{
-    const x = p.x - camX;
-    const y = groundY - p.h;
-    ctx.fillStyle="#2ecc71";
-    ctx.fillRect(x-6, y, p.w+12, 16);
-    ctx.fillRect(x, y+14, p.w, p.h-14);
-  });
-
-  // PLAYER
-  const px = player.x - camX;
-  const py = player.y;
-  ctx.fillStyle="#ff0000";
-  ctx.fillRect(px+6,py,20,8);
-  ctx.fillStyle="#f1c27d";
-  ctx.fillRect(px+8,py+8,16,12);
-  ctx.fillStyle="#0066ff";
-  ctx.fillRect(px+4,py+32,24,12);
-}
-
-/* LOOP */
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-loop();
-</script>
-
-</body>
-</html>
+  ctx.f
