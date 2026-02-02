@@ -15,16 +15,16 @@ canvas{display:block;}
   position:fixed;
   top:10px;
   left:10px;
-  font-family:Arial;
-  font-size:20px;
   color:white;
+  font-size:20px;
+  font-family:Arial;
   text-shadow:2px 2px #000;
 }
 </style>
 </head>
 <body>
 
-<div id="hud">FASE 1 | 🪙 0</div>
+<div id="hud">FASE 1</div>
 <canvas id="game"></canvas>
 
 <script>
@@ -59,9 +59,7 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* =====================================================
-   CONTROLES — NÃO MEXER
-===================================================== */
+/* ================= CONTROLES (NÃO TOCAR) ================= */
 let leftFinger = null;
 let rightFinger = null;
 let jumpFinger = null;
@@ -106,73 +104,37 @@ canvas.addEventListener("touchend", e=>{
   }
 });
 
-/* ================= FASES ================= */
-let fase = 1;
-let camX = 0;
-let coinCount = 0;
-
-let pipes = [];
-let turtles = [];
-let plants = [];
-let coins = [];
-let faseEndX = 1500;
-
-function loadFase(n){
-  player.x = 100;
-  camX = 0;
-
-  if(n === 1){
-    pipes = [
-      {x:400,w:44,h:120},
-      {x:700,w:44,h:160}
-    ];
-    turtles = [];
-    plants = [];
-    coins = [
-      {x:300,y:groundY()-140,collected:false},
-      {x:600,y:groundY()-180,collected:false}
-    ];
-    faseEndX = 1200;
-  }
-
-  if(n === 2){
-    pipes = [
-      {x:350,w:44,h:120},
-      {x:650,w:44,h:160},
-      {x:950,w:44,h:120}
-    ];
-    turtles = [
-      {x:500,w:32,h:32,vx:-1.2},
-      {x:820,w:32,h:32,vx:1.2}
-    ];
-    plants = pipes.map(p=>({pipe:p,offset:0,dir:-1}));
-    coins = [
-      {x:450,y:groundY()-200,collected:false}
-    ];
-    faseEndX = 1500;
-  }
-
-  if(n === 3){
-    pipes = [
-      {x:400,w:44,h:160},
-      {x:800,w:44,h:160}
-    ];
-    turtles = [
-      {x:600,w:32,h:32,vx:-1.5}
-    ];
-    plants = pipes.map(p=>({pipe:p,offset:0,dir:-1}));
-    coins = [
-      {x:500,y:groundY()-220,collected:false}
-    ];
-    faseEndX = 1400;
-  }
-
-  hud.innerHTML = `FASE ${fase} | 🪙 ${coinCount}`;
+/* ================= COLISÃO ================= */
+function collide(a,b){
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  );
 }
 
-loadFase(fase);
+/* ================= FASE ================= */
+let pipes = [
+  {x:400,w:44,h:120},
+  {x:800,w:44,h:160}
+];
+
+let turtles = [
+  {x:600,y:0,w:32,h:32,vx:-1.2,alive:true}
+];
+
+let plants = pipes.map(p=>({
+  pipe:p,offset:0,dir:-1
+}));
 
 /* ================= UPDATE ================= */
+function resetPlayer(){
+  player.x = 100;
+  player.y = 0;
+  player.vy = 0;
+}
+
 function update(){
   player.vx = 0;
   if(leftFinger!==null) player.vx=-SPEED;
@@ -189,6 +151,7 @@ function update(){
     player.longUsed = false;
   }
 
+  /* CANOS */
   pipes.forEach(p=>{
     const top = groundY() - p.h;
     if(player.x < p.x+p.w && player.x+player.w > p.x){
@@ -201,34 +164,38 @@ function update(){
     }
   });
 
+  /* TARTARUGAS */
   turtles.forEach(t=>{
+    if(!t.alive) return;
     t.x += t.vx;
     t.y = groundY() - t.h;
-  });
 
-  plants.forEach(pl=>{
-    pl.offset += pl.dir * 0.5;
-    if(pl.offset < -40 || pl.offset > 0) pl.dir *= -1;
-  });
-
-  coins.forEach(c=>{
-    if(!c.collected &&
-      player.x<c.x+20 &&
-      player.x+player.w>c.x &&
-      player.y<c.y+20 &&
-      player.y+player.h>c.y){
-      c.collected = true;
-      coinCount++;
-      hud.innerHTML = `FASE ${fase} | 🪙 ${coinCount}`;
+    if(collide(player,t)){
+      if(player.vy > 0 && player.y + player.h - player.vy <= t.y){
+        t.alive = false;
+        player.vy = JUMP/1.5;
+      } else {
+        resetPlayer();
+      }
     }
   });
 
-  if(player.x > faseEndX){
-    fase++;
-    if(fase <= 3) loadFase(fase);
-  }
+  /* PLANTAS */
+  plants.forEach(pl=>{
+    pl.offset += pl.dir * 0.5;
+    if(pl.offset < -40 || pl.offset > 0) pl.dir *= -1;
 
-  camX = player.x - 150;
+    const plantBox = {
+      x:pl.pipe.x+6,
+      y:groundY()-pl.pipe.h+pl.offset-30,
+      w:pl.pipe.w-12,
+      h:30
+    };
+
+    if(collide(player,plantBox)){
+      resetPlayer();
+    }
+  });
 }
 
 /* ================= DRAW ================= */
@@ -236,36 +203,31 @@ function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX,groundY(),4000,80);
+  ctx.fillRect(0,groundY(),canvas.width,80);
 
   pipes.forEach(p=>{
     ctx.fillStyle="#2ecc71";
-    ctx.fillRect(p.x-camX,groundY()-p.h,p.w,p.h);
+    ctx.fillRect(p.x,pipes.y,p.w,p.h);
+    ctx.fillRect(p.x,groundY()-p.h,p.w,p.h);
   });
 
   turtles.forEach(t=>{
+    if(!t.alive) return;
     ctx.fillStyle="#27ae60";
-    ctx.fillRect(t.x-camX,t.y,t.w,t.h);
+    ctx.fillRect(t.x,t.y,t.w,t.h);
   });
 
   plants.forEach(pl=>{
     ctx.fillStyle="red";
-    ctx.fillRect(pl.pipe.x-camX+6,
+    ctx.fillRect(
+      pl.pipe.x+6,
       groundY()-pl.pipe.h+pl.offset-30,
-      pl.pipe.w-12,30);
-  });
-
-  coins.forEach(c=>{
-    if(!c.collected){
-      ctx.fillStyle="gold";
-      ctx.beginPath();
-      ctx.arc(c.x-camX+10,c.y+10,10,0,Math.PI*2);
-      ctx.fill();
-    }
+      pl.pipe.w-12,30
+    );
   });
 
   ctx.fillStyle="red";
-  ctx.fillRect(player.x-camX,player.y,player.w,player.h);
+  ctx.fillRect(player.x,player.y,player.w,player.h);
 }
 
 /* ================= LOOP ================= */
