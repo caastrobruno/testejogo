@@ -2,16 +2,17 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Mario Pedido Especial</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Jogo Plataforma</title>
 <style>
-html,body{
-  margin:0;
-  padding:0;
-  overflow:hidden;
-  background:#5c94fc;
-}
-canvas{display:block;}
+  html,body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#4da6ff;
+  }
+  canvas{
+    display:block;
+  }
 </style>
 </head>
 <body>
@@ -19,219 +20,218 @@ canvas{display:block;}
 <canvas id="game"></canvas>
 
 <script>
-/* ================= CANVAS ================= */
+/* CANVAS */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-let groundY = 0;
 function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
-  groundY = canvas.height - 90;
 }
 resize();
 addEventListener("resize", resize);
 
-/* ================= CONSTANTES ================= */
+/* CONSTANTES */
 const GRAVITY = 0.9;
 const SPEED = 5;
-const JUMP = -16;
-const LONG_JUMP = -20;
-const LONG_JUMP_PUSH = 4;
+const JUMP = -18;
+const LONG_JUMP = -26;
+const LONG_JUMP_PUSH = 5;
+const DOUBLE_TAP_TIME = 280;
 
-/* ================= PLAYER ================= */
+/* CHÃO */
+const groundHeight = 90;
+
+/* PLAYER */
 const player = {
-  x:100,y:0,w:32,h:48,
-  vx:0,vy:0,
-  onGround:false,
-  dir:1
+  x: 100,
+  y: 0,
+  w: 32,
+  h: 48,
+  vx: 0,
+  vy: 0,
+  onGround: false,
+  dir: 1,
+  jumpTaps: 0,
+  jumpTimer: null
 };
 
-/* ================= CONTROLES TOUCH ================= */
-let left=false,right=false;
-let jumpTaps=0;
-let jumpTimer=null;
-const DOUBLE_TAP_TIME=250;
+/* CONTROLES */
+let left = false;
+let right = false;
 
+/* TOUCH MOVIMENTO */
 function readTouches(touches){
-  left=right=false;
-  const third=innerWidth/3;
+  left = right = false;
+  const third = innerWidth / 3;
+
   for(const t of touches){
-    if(t.clientX<third) left=true;
-    else if(t.clientX>third*2) right=true;
+    if(t.clientX < third) left = true;
+    else if(t.clientX > third*2) right = true;
   }
 }
 
-canvas.addEventListener("touchstart",e=>{
+/* TOUCH START */
+canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
-  const t=e.changedTouches[0];
-  const third=innerWidth/3;
+  const t = e.changedTouches[0];
+  const third = innerWidth / 3;
 
-  if(t.clientX>=third && t.clientX<=third*2 && player.onGround){
-    jumpTaps++;
+  // ÁREA CENTRAL = PULO
+  if(t.clientX >= third && t.clientX <= third*2){
+    player.jumpTaps++;
 
-    if(jumpTaps===1){
-      player.vy=JUMP;           // pulo imediato
-      player.onGround=false;
-      jumpTimer=setTimeout(()=>jumpTaps=0,DOUBLE_TAP_TIME);
+    if(player.jumpTaps === 1){
+      // pulo IMEDIATO
+      player.vy = JUMP;
+      player.onGround = false;
+
+      player.jumpTimer = setTimeout(()=>{
+        player.jumpTaps = 0;
+      }, DOUBLE_TAP_TIME);
     }
-    else if(jumpTaps===2){
-      clearTimeout(jumpTimer);
-      player.vy=LONG_JUMP;
-      player.vx+=player.dir*LONG_JUMP_PUSH;
-      player.onGround=false;
-      jumpTaps=0;
+
+    if(player.jumpTaps === 2){
+      clearTimeout(player.jumpTimer);
+
+      // SALTO LONGO
+      player.vy = LONG_JUMP;
+      player.vx += player.dir * LONG_JUMP_PUSH;
+      player.jumpTaps = 0;
     }
   }
+
   readTouches(e.touches);
 });
-canvas.addEventListener("touchmove",e=>{e.preventDefault();readTouches(e.touches);});
-canvas.addEventListener("touchend",e=>{e.preventDefault();readTouches(e.touches);});
 
-/* ================= MUNDO ================= */
-const pipes=[
-  {x:500,w:44,h:110},
-  {x:850,w:44,h:140},
-  {x:1200,w:44,h:100}
+canvas.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  readTouches(e.touches);
+});
+
+canvas.addEventListener("touchend", e=>{
+  e.preventDefault();
+  readTouches(e.touches);
+});
+
+/* MUNDO */
+const pipes = [
+  {x: 500, w: 44, h: 120},
+  {x: 900, w: 44, h: 160},
+  {x: 1250, w: 44, h: 100}
 ];
 
-const turtles=[
-  {x:700,y:0,w:32,h:32,dir:-1}
-];
+let camX = 0;
 
-const plants=[
-  {x:850,h:80,offset:0,dir:1}
-];
-
-let camX=0;
-
-/* ================= UPDATE ================= */
+/* UPDATE */
 function update(){
-  // movimento
-  if(left){player.vx=-SPEED;player.dir=-1;}
-  else if(right){player.vx=SPEED;player.dir=1;}
-  else player.vx=0;
-
-  player.vy+=GRAVITY;
-  player.x+=player.vx;
-  player.y+=player.vy;
-
-  // chão
-  if(player.y+player.h>=groundY){
-    player.y=groundY-player.h;
-    player.vy=0;
-    player.onGround=true;
+  // movimento horizontal
+  if(left){
+    player.vx = -SPEED;
+    player.dir = -1;
+  }else if(right){
+    player.vx = SPEED;
+    player.dir = 1;
+  }else{
+    player.vx = 0;
   }
 
-  // canos
+  // física
+  player.vy += GRAVITY;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  const groundY = canvas.height - groundHeight;
+
+  // chão REAL
+  if(player.y + player.h >= groundY){
+    player.y = groundY - player.h;
+    player.vy = 0;
+    player.onGround = true;
+    player.jumpTaps = 0;
+  }else{
+    player.onGround = false;
+  }
+
+  // colisão com canos
   pipes.forEach(p=>{
-    const top=groundY-p.h;
-    const hitX=player.x< p.x+p.w && player.x+player.w>p.x;
+    const top = groundY - p.h;
 
-    if(hitX && player.vy>=0 &&
-       player.y+player.h>=top &&
-       player.y+player.h-player.vy<top){
-      player.y=top-player.h;
-      player.vy=0;
-      player.onGround=true;
+    const overlapX =
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x;
+
+    // aterrissar EM CIMA do cano
+    if(
+      overlapX &&
+      player.vy >= 0 &&
+      player.y + player.h >= top &&
+      player.y + player.h - player.vy < top
+    ){
+      player.y = top - player.h;
+      player.vy = 0;
+      player.onGround = true;
+      player.jumpTaps = 0;
     }
-    else if(hitX && player.y+player.h>top){
-      if(player.vx>0) player.x=p.x-player.w;
-      if(player.vx<0) player.x=p.x+p.w;
-    }
-  });
-
-  // tartarugas
-  turtles.forEach(t=>{
-    t.x+=t.dir*1.2;
-    if(t.x<600||t.x>900) t.dir*=-1;
-
-    const hit=player.x< t.x+t.w &&
-              player.x+player.w>t.x &&
-              player.y+player.h>groundY-t.h;
-
-    if(hit){
-      if(player.vy>0){
-        t.x=-999; // derrota tartaruga
-        player.vy=JUMP/1.2;
-      } else {
-        reset();
-      }
+    // colisão lateral (NÃO mexe no pulo)
+    else if(
+      overlapX &&
+      player.y + player.h > top
+    ){
+      if(player.vx > 0) player.x = p.x - player.w;
+      if(player.vx < 0) player.x = p.x + p.w;
     }
   });
 
-  // plantas
-  plants.forEach(pl=>{
-    pl.offset+=pl.dir*0.5;
-    if(pl.offset>30||pl.offset<0) pl.dir*=-1;
-
-    const px=pl.x;
-    const py=groundY-110-pl.offset;
-    if(player.x<px+30 && player.x+player.w>px &&
-       player.y<py+80 && player.y+player.h>py){
-      reset();
-    }
-  });
-
-  camX=player.x-150;
+  camX = player.x - 150;
 }
 
-/* ================= DRAW ================= */
+/* DRAW */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  const groundY = canvas.height - groundHeight;
+
   // chão
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX,groundY,5000,90);
+  ctx.fillRect(-camX, groundY, 5000, groundHeight);
 
   // canos
   pipes.forEach(p=>{
-    const x=p.x-camX,y=groundY-p.h;
+    const x = p.x - camX;
+    const y = groundY - p.h;
+
     ctx.fillStyle="#2ecc71";
-    ctx.fillRect(x,y+14,p.w,p.h-14);
-    ctx.fillRect(x-6,y,p.w+12,16);
-  });
-
-  // tartarugas
-  turtles.forEach(t=>{
+    ctx.fillRect(x, y+14, p.w, p.h-14);
     ctx.fillStyle="#27ae60";
-    ctx.fillRect(t.x-camX,groundY-t.h,t.w,t.h);
-  });
-
-  // plantas
-  plants.forEach(pl=>{
-    const x=pl.x-camX;
-    const y=groundY-110-pl.offset;
-    ctx.fillStyle="#1abc9c";
-    ctx.fillRect(x,y,30,80);
+    ctx.fillRect(x + p.w - 6, y+14, 6, p.h-14);
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(x - 6, y, p.w + 12, 16);
+    ctx.fillStyle="#1e8449";
+    ctx.fillRect(x - 6, y+12, p.w + 12, 4);
   });
 
   // player
-  const x=player.x-camX,y=player.y;
+  const px = player.x - camX;
+  const py = player.y;
+
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(x+6,y,20,8);
+  ctx.fillRect(px+6, py, 20, 8);
   ctx.fillStyle="#f1c27d";
-  ctx.fillRect(x+8,y+8,16,12);
+  ctx.fillRect(px+8, py+8, 16, 12);
   ctx.fillStyle="#ff0000";
-  ctx.fillRect(x+4,y+20,24,12);
+  ctx.fillRect(px+4, py+20, 24, 12);
   ctx.fillStyle="#0066ff";
-  ctx.fillRect(x+4,y+32,24,12);
+  ctx.fillRect(px+4, py+32, 24, 12);
 }
 
-/* ================= LOOP ================= */
+/* LOOP */
 function loop(){
   update();
   draw();
   requestAnimationFrame(loop);
 }
 loop();
-
-/* ================= RESET ================= */
-function reset(){
-  player.x=100;
-  player.y=0;
-  player.vx=player.vy=0;
-}
 </script>
 
 </body>
