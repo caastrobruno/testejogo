@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Jogo</title>
+<title>Super Mario World Style</title>
 <style>
 html,body{
   margin:0;
@@ -48,7 +48,7 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* CONTROLES (NÃO MEXER) */
+/* CONTROLES (INTACTOS) */
 let leftFinger=null,rightFinger=null,jumpFinger=null;
 
 canvas.addEventListener("touchstart",e=>{
@@ -66,10 +66,13 @@ canvas.addEventListener("touchstart",e=>{
     else if(t.clientX>=third && t.clientX<=third*2 && jumpFinger===null){
       jumpFinger=t.identifier;
       if(player.onGround){
-        player.vy=JUMP; player.onGround=false;
-        player.lastJumpTime=now; player.longUsed=false;
+        player.vy=JUMP;
+        player.onGround=false;
+        player.lastJumpTime=now;
+        player.longUsed=false;
       }else if(!player.longUsed && now-player.lastJumpTime<DOUBLE_TAP_TIME){
-        player.vy=LONG_JUMP; player.longUsed=true;
+        player.vy=LONG_JUMP;
+        player.longUsed=true;
       }
     }
   }
@@ -84,49 +87,24 @@ canvas.addEventListener("touchend",e=>{
   }
 });
 
-/* FASES */
-const levels = [
-  {
-    pipes:[
-      {x:400,w:44,h:120},
-      {x:800,w:44,h:160}
-    ],
-    turtles:[
-      {x:600,w:32,h:32,vx:-1.2,alive:true}
-    ],
-    flag:{x:1100}
-  },
-  {
-    pipes:[
-      {x:300,w:44,h:100},
-      {x:650,w:44,h:180},
-      {x:950,w:44,h:120}
-    ],
-    turtles:[
-      {x:500,w:32,h:32,vx:-1.5,alive:true},
-      {x:820,w:32,h:32,vx:1.2,alive:true}
-    ],
-    flag:{x:1300}
-  }
+/* FASE */
+let pipes = [
+  {x:400,w:44,h:120},
+  {x:800,w:44,h:160},
+  {x:1150,w:44,h:100}
 ];
 
-let currentLevel=0;
-let pipes=[], turtles=[], plants=[], flag={};
-let camX=0;
+let turtles = [
+  {x:600,w:32,h:32,vx:-1.2,alive:true},
+  {x:950,w:32,h:32,vx:1.3,alive:true}
+];
 
-function loadLevel(i){
-  const lvl = levels[i];
-  pipes = JSON.parse(JSON.stringify(lvl.pipes));
-  turtles = JSON.parse(JSON.stringify(lvl.turtles));
-  plants = pipes.map(p=>({pipe:p,offset:0,dir:-1}));
-  flag = {x:lvl.flag.x,w:12,h:140};
-  player.x=100; player.y=0; player.vy=0;
-}
-loadLevel(0);
+let plants = pipes.map(p=>({pipe:p,offset:0,dir:-1}));
 
-function resetPlayer(){
-  player.x=100; player.y=0; player.vy=0;
-}
+const flag = {x:1450,w:14,h:150};
+const levelEnd = flag.x + 200;
+
+let camX = 0;
 
 /* UPDATE */
 function update(){
@@ -142,7 +120,9 @@ function update(){
 
   if(player.y+player.h>=groundY()){
     player.y=groundY()-player.h;
-    player.vy=0; player.onGround=true; player.longUsed=false;
+    player.vy=0;
+    player.onGround=true;
+    player.longUsed=false;
   }
 
   pipes.forEach(p=>{
@@ -150,7 +130,9 @@ function update(){
     if(player.x<box.x+box.w && player.x+player.w>box.x &&
        player.y<box.y+box.h && player.y+player.h>box.y){
       if(prevY+player.h<=box.y){
-        player.y=box.y-player.h; player.vy=0; player.onGround=true;
+        player.y=box.y-player.h;
+        player.vy=0;
+        player.onGround=true;
       }else if(prevX+player.w<=box.x){
         player.x=box.x-player.w;
       }else if(prevX>=box.x+box.w){
@@ -161,18 +143,20 @@ function update(){
 
   turtles.forEach(t=>{
     if(!t.alive) return;
-    t.x+=t.vx; t.y=groundY()-t.h;
+    t.x+=t.vx;
+    t.y=groundY()-t.h;
     if(player.x<t.x+t.w && player.x+player.w>t.x &&
        player.y<t.y+t.h && player.y+player.h>t.y){
       if(player.vy>0 && prevY+player.h<=t.y){
-        t.alive=false; player.vy=JUMP/1.4;
-      } else resetPlayer();
+        t.alive=false;
+        player.vy=JUMP/1.4;
+      } else player.x=100;
     }
   });
 
   plants.forEach(pl=>{
     pl.offset+=pl.dir*0.5;
-    if(pl.offset<-40||pl.offset>0)pl.dir*=-1;
+    if(pl.offset<-40||pl.offset>0) pl.dir*=-1;
     const box={
       x:pl.pipe.x+6,
       y:groundY()-pl.pipe.h+pl.offset-30,
@@ -181,18 +165,15 @@ function update(){
     };
     if(player.x<box.x+box.w && player.x+player.w>box.x &&
        player.y<box.y+box.h && player.y+player.h>box.y){
-      resetPlayer();
+      player.x=100;
     }
   });
 
-  if(player.x+player.w>flag.x){
-    currentLevel++;
-    if(currentLevel<levels.length) loadLevel(currentLevel);
-    else alert("🎉 Todas as fases concluídas!");
-  }
-
+  /* CAMERA */
   camX = player.x - canvas.width/2 + player.w/2;
   if(camX < 0) camX = 0;
+  if(camX > levelEnd - canvas.width)
+    camX = levelEnd - canvas.width;
 }
 
 /* DRAW */
@@ -225,7 +206,7 @@ function draw(){
   });
 
   /* BANDEIRA */
-  ctx.fillStyle="white";
+  ctx.fillStyle="#fff";
   ctx.fillRect(flag.x-camX,groundY()-flag.h,flag.w,flag.h);
   ctx.fillStyle="black";
   ctx.fillRect(flag.x+flag.w-camX,groundY()-flag.h+20,40,30);
