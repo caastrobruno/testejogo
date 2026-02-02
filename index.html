@@ -3,47 +3,148 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Pedido Mario</title>
+<title>Mario Touch</title>
 <style>
-  html,body{
-    margin:0;
-    padding:0;
-    overflow:hidden;
-    background:#5c94fc;
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #5c94fc;
   }
-  canvas{
-    display:block;
+  canvas {
+    display: block;
   }
 </style>
 </head>
-<body>
 
+<body>
 <canvas id="game"></canvas>
 
 <script>
-/* ================= SETUP ================= */
+/* ========= CANVAS ========= */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+/* ========= RESIZE ========= */
 let groundY = 0;
 function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
   groundY = canvas.height - 90;
 }
 resize();
-addEventListener("resize", resize);
+window.addEventListener("resize", resize);
 
-/* ================= CONSTANTES ================= */
+/* ========= CONSTANTES ========= */
 const GRAVITY = 0.9;
 const SPEED = 5;
-const JUMP = -16;
-const LONG_JUMP = -20;
+const JUMP = -18;
+const LONG_JUMP = -26;
 const LONG_JUMP_PUSH = 5;
 
-/* ================= PLAYER ================= */
+/* ========= PLAYER ========= */
 const player = {
   x: 100,
-  y: groundY - 48,
+  y: 0,
   w: 32,
   h: 48,
+  vx: 0,
+  vy: 0,
+  onGround: false,
+  dir: 1
+};
+
+/* ========= CONTROLES (NÃO ALTERADOS) ========= */
+let left = false;
+let right = false;
+
+let jumpCount = 0;
+let lastTapTime = 0;
+const DOUBLE_TAP_TIME = 250;
+
+function readTouches(touches){
+  left = right = false;
+  const third = window.innerWidth / 3;
+
+  for(const t of touches){
+    if(t.clientX < third) left = true;
+    else if(t.clientX > third * 2) right = true;
+  }
+}
+
+canvas.addEventListener("touchstart", e=>{
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  const third = window.innerWidth / 3;
+  const now = Date.now();
+
+  if(t.clientX >= third && t.clientX <= third * 2){
+    if(player.onGround){
+      player.vy = JUMP;
+      player.onGround = false;
+      jumpCount = 1;
+      lastTapTime = now;
+    }
+    else if(jumpCount === 1 && now - lastTapTime < DOUBLE_TAP_TIME){
+      player.vy = LONG_JUMP;
+      player.vx += player.dir * LONG_JUMP_PUSH;
+      jumpCount = 2;
+    }
+  }
+
+  readTouches(e.touches);
+});
+
+canvas.addEventListener("touchmove", e=>{
+  e.preventDefault();
+  readTouches(e.touches);
+});
+
+canvas.addEventListener("touchend", e=>{
+  e.preventDefault();
+  readTouches(e.touches);
+});
+
+/* ========= CENÁRIO ========= */
+const pipes = [
+  { x: 500, w: 44, h: 110 },
+  { x: 900, w: 44, h: 160 }
+];
+
+let camX = 0;
+
+/* ========= UPDATE ========= */
+function update(){
+  if(left){
+    player.vx = -SPEED;
+    player.dir = -1;
+  } else if(right){
+    player.vx = SPEED;
+    player.dir = 1;
+  } else {
+    player.vx = 0;
+  }
+
+  player.vy += GRAVITY;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  if(player.y + player.h >= groundY){
+    player.y = groundY - player.h;
+    player.vy = 0;
+    player.onGround = true;
+    jumpCount = 0;
+  }
+
+  pipes.forEach(p=>{
+    const top = groundY - p.h;
+
+    if(
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x &&
+      player.y + player.h > top
+    ){
+      if(player.vy >= 0 && player.y + player.h - player.vy <= top){
+        player.y = top - player.h;
+        player.vy = 0;
+        player.onGround = tr
