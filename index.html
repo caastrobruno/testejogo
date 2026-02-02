@@ -2,59 +2,43 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Pedido Especial 💍</title>
-
+<title>Mini Mario Touch</title>
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #5c94fc;
-}
-canvas {
-  display: block;
-}
-#proposal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.85);
-  color: #fff;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  font-family: Arial, sans-serif;
-  text-align: center;
-}
-#proposal button {
-  margin: 10px;
-  padding: 14px 24px;
-  font-size: 18px;
-  border: none;
-  border-radius: 8px;
-}
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #5c94fc; /* céu azul */
+    touch-action: none;
+  }
+
+  canvas {
+    display: block;
+  }
+
+  #proposal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.8);
+    color: white;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    z-index: 10;
+  }
 </style>
 </head>
-
 <body>
 
 <canvas id="game"></canvas>
 
-<div id="proposal">
-  <h1>💍 Quer casar comigo?</h1>
-  <div>
-    <button onclick="yes()">Sim ❤️</button>
-    <button onclick="no()">Não 😅</button>
-  </div>
-  <p id="final"></p>
-</div>
+<div id="proposal">🎉 FIM DO JOGO 🎉</div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-/* RESIZE */
 let groundY = 0;
 function resize(){
   canvas.width = innerWidth;
@@ -69,8 +53,7 @@ const GRAVITY = 0.9;
 const SPEED = 5;
 const JUMP = -18;
 const LONG_JUMP = -26;
-const LONG_JUMP_PUSH = 5;
-const DOUBLE_TAP_TIME = 300;
+const LONG_JUMP_PUSH = 6;
 
 /* PLAYER */
 const player = {
@@ -81,15 +64,18 @@ const player = {
   vx: 0,
   vy: 0,
   onGround: false,
-  dir: 1,
-  lastJumpTap: 0
+  dir: 1
 };
 
 /* CONTROLES */
 let left = false;
 let right = false;
 
-/* TOUCH */
+/* DOUBLE TAP SEM DELAY */
+let lastJumpTap = 0;
+const DOUBLE_TAP_TIME = 280;
+
+/* LEITURA DE TOQUES */
 function readTouches(touches){
   left = right = false;
   const third = innerWidth / 3;
@@ -100,26 +86,28 @@ function readTouches(touches){
   }
 }
 
+/* TOUCH START */
 canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
   const t = e.changedTouches[0];
   const third = innerWidth / 3;
-  const now = Date.now();
+  const now = performance.now();
 
-  // ÁREA CENTRAL = PULO
-  if(t.clientX >= third && t.clientX <= third * 2){
+  // ÁREA DO PULO (CENTRO)
+  if(t.clientX >= third && t.clientX <= third * 2 && player.onGround){
 
-    // PRIMEIRO TOQUE → PULO NORMAL IMEDIATO
-    if(player.onGround){
-      player.vy = JUMP;
-      player.onGround = false;
-      player.lastJumpTap = now;
-    }
-    // SEGUNDO TOQUE RÁPIDO → SALTO LONGO
-    else if(now - player.lastJumpTap < DOUBLE_TAP_TIME){
+    // DUPLO TOQUE
+    if(now - lastJumpTap < DOUBLE_TAP_TIME){
       player.vy = LONG_JUMP;
       player.vx += player.dir * LONG_JUMP_PUSH;
-      player.lastJumpTap = 0;
+      player.onGround = false;
+      lastJumpTap = 0;
+    }
+    // TOQUE ÚNICO (IMEDIATO)
+    else {
+      player.vy = JUMP;
+      player.onGround = false;
+      lastJumpTap = now;
     }
   }
 
@@ -166,7 +154,6 @@ function update(){
     player.y = groundY - player.h;
     player.vy = 0;
     player.onGround = true;
-    player.lastJumpTap = 0;
   }
 
   // CANOS
@@ -185,11 +172,6 @@ function update(){
       player.y = pipeTop - player.h;
       player.vy = 0;
       player.onGround = true;
-      player.lastJumpTap = 0;
-    }
-    else if(overlapX && player.y + player.h > pipeTop){
-      if(player.vx > 0) player.x = p.x - player.w;
-      if(player.vx < 0) player.x = p.x + p.w;
     }
   });
 
@@ -212,6 +194,7 @@ function draw(){
   pipes.forEach(p=>{
     const x = p.x - camX;
     const y = groundY - p.h;
+
     ctx.fillStyle="#2ecc71";
     ctx.fillRect(x, y+14, p.w, p.h-14);
     ctx.fillRect(x-6, y, p.w+12, 16);
@@ -220,10 +203,29 @@ function draw(){
   // CASTELO
   const cx = castle.x - camX;
   const cy = groundY - castle.h;
+
   ctx.fillStyle="#b0b0b0";
   ctx.fillRect(cx, cy, castle.w, castle.h);
 
   // PLAYER
-  const px = player.x - camX;
-  const py = player.y;
-  ctx.
+  const x = player.x - camX;
+  const y = player.y;
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(x+6, y, 20, 8);
+  ctx.fillStyle="#f1c27d";
+  ctx.fillRect(x+8, y+8, 16, 12);
+  ctx.fillStyle="#0066ff";
+  ctx.fillRect(x+4, y+32, 24, 12);
+}
+
+/* LOOP */
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
