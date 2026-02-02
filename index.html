@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Jogo</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 html,body{
   margin:0;
@@ -53,9 +53,7 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* =================================================
-   CONTROLES — NÃO MEXER (CÓPIA EXATA)
-================================================= */
+/* ================= CONTROLES (INTOCADOS) ================= */
 let leftFinger = null;
 let rightFinger = null;
 let jumpFinger = null;
@@ -100,4 +98,14 @@ canvas.addEventListener("touchstart", e=>{
 });
 
 canvas.addEventListener("touchend", e=>{
-  e.preventDefault
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(t.identifier === leftFinger) leftFinger = null;
+    if(t.identifier === rightFinger) rightFinger = null;
+    if(t.identifier === jumpFinger) jumpFinger = null;
+  }
+});
+/* ========================================================= */
+
+/* OBSTÁCULOS SIMPLES (SEM LÓGICA QUE QUEBRA) */
+const pipes = [
