@@ -1,150 +1,187 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<title>Mario Touch Game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Mario Touch</title>
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    background: #5c94fc;
+  html,body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#5c94fc;
+    touch-action:none;
   }
-  canvas {
-    display: block;
-  }
+  canvas{ display:block; }
 </style>
 </head>
-
 <body>
+
 <canvas id="game"></canvas>
 
 <script>
-/* ========= CANVAS ========= */
+/* CANVAS */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-/* ========= RESIZE ========= */
-let groundY = 0;
 function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  groundY = canvas.height - 90;
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
 }
 resize();
-window.addEventListener("resize", resize);
+addEventListener("resize", resize);
 
-/* ========= CONSTANTES ========= */
+/* CONSTANTES */
 const GRAVITY = 0.9;
 const SPEED = 5;
 const JUMP = -18;
 const LONG_JUMP = -26;
-const LONG_JUMP_PUSH = 5;
+const LONG_PUSH = 5;
+const GROUND_H = 80;
 
-/* ========= PLAYER ========= */
+/* PLAYER */
 const player = {
-  x: 100,
-  y: 0,
-  w: 32,
-  h: 48,
-  vx: 0,
-  vy: 0,
-  onGround: false,
-  dir: 1
+  x:100, y:0,
+  w:32, h:48,
+  vx:0, vy:0,
+  onGround:false,
+  dir:1
 };
 
-/* ========= CONTROLES (NÃO ALTERADOS) ========= */
-let left = false;
-let right = false;
+/* CHÃO */
+function groundY(){
+  return canvas.height - GROUND_H;
+}
 
-let jumpCount = 0;
-let lastTapTime = 0;
-const DOUBLE_TAP_TIME = 250;
+/* CONTROLES */
+let left=false, right=false;
 
-function readTouches(touches){
+/* DOUBLE TAP */
+let lastTap = 0;
+const DOUBLE_TIME = 280;
+
+/* TOUCH */
+function handleTouches(touches){
   left = right = false;
-  const third = window.innerWidth / 3;
+  const third = canvas.width / 3;
 
   for(const t of touches){
     if(t.clientX < third) left = true;
-    else if(t.clientX > third * 2) right = true;
+    else if(t.clientX > third*2) right = true;
   }
 }
 
 canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
   const t = e.changedTouches[0];
-  const third = window.innerWidth / 3;
-  const now = Date.now();
+  const third = canvas.width / 3;
 
-  if(t.clientX >= third && t.clientX <= third * 2){
-    if(player.onGround){
-      player.vy = JUMP;
-      player.onGround = false;
-      jumpCount = 1;
-      lastTapTime = now;
-    }
-    else if(jumpCount === 1 && now - lastTapTime < DOUBLE_TAP_TIME){
+  // PULO (CENTRO)
+  if(t.clientX >= third && t.clientX <= third*2 && player.onGround){
+    const now = performance.now();
+
+    if(now - lastTap < DOUBLE_TIME){
       player.vy = LONG_JUMP;
-      player.vx += player.dir * LONG_JUMP_PUSH;
-      jumpCount = 2;
+      player.vx += player.dir * LONG_PUSH;
+    } else {
+      player.vy = JUMP;
     }
+
+    player.onGround = false;
+    lastTap = now;
   }
 
-  readTouches(e.touches);
+  handleTouches(e.touches);
 });
 
 canvas.addEventListener("touchmove", e=>{
   e.preventDefault();
-  readTouches(e.touches);
+  handleTouches(e.touches);
 });
 
 canvas.addEventListener("touchend", e=>{
   e.preventDefault();
-  readTouches(e.touches);
+  handleTouches(e.touches);
 });
 
-/* ========= CENÁRIO ========= */
+/* CANOS */
 const pipes = [
-  { x: 500, w: 44, h: 110 },
-  { x: 900, w: 44, h: 160 }
+  {x:500,w:44,h:120},
+  {x:900,w:44,h:160}
 ];
 
-let camX = 0;
-
-/* ========= UPDATE ========= */
+/* UPDATE */
 function update(){
-  if(left){
-    player.vx = -SPEED;
-    player.dir = -1;
-  } else if(right){
-    player.vx = SPEED;
-    player.dir = 1;
-  } else {
-    player.vx = 0;
-  }
+  if(left){ player.vx = -SPEED; player.dir=-1; }
+  else if(right){ player.vx = SPEED; player.dir=1; }
+  else player.vx = 0;
 
   player.vy += GRAVITY;
   player.x += player.vx;
   player.y += player.vy;
 
-  if(player.y + player.h >= groundY){
-    player.y = groundY - player.h;
+  // chão
+  if(player.y + player.h >= groundY()){
+    player.y = groundY() - player.h;
     player.vy = 0;
     player.onGround = true;
-    jumpCount = 0;
   }
 
+  // colisão canos
   pipes.forEach(p=>{
-    const top = groundY - p.h;
+    const top = groundY() - p.h;
 
-    if(
+    const overlapX =
       player.x < p.x + p.w &&
-      player.x + player.w > p.x &&
-      player.y + player.h > top
-    ){
-      if(player.vy >= 0 && player.y + player.h - player.vy <= top){
-        player.y = top - player.h;
-        player.vy = 0;
-        player.onGround = tr
+      player.x + player.w > p.x;
+
+    // cair em cima
+    if(overlapX &&
+       player.vy >= 0 &&
+       player.y + player.h >= top &&
+       player.y + player.h - player.vy < top){
+      player.y = top - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+    // lateral
+    else if(overlapX && player.y + player.h > top){
+      if(player.vx > 0) player.x = p.x - player.w;
+      if(player.vx < 0) player.x = p.x + p.w;
+    }
+  });
+}
+
+/* DRAW */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // chão
+  ctx.fillStyle="#7c4a16";
+  ctx.fillRect(0, groundY(), canvas.width, GROUND_H);
+
+  // canos
+  pipes.forEach(p=>{
+    const y = groundY() - p.h;
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(p.x,y,p.w,p.h);
+    ctx.fillStyle="#1e8449";
+    ctx.fillRect(p.x-6,y,p.w+12,16);
+  });
+
+  // player
+  ctx.fillStyle="#ff0000";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+}
+
+/* LOOP */
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+
+</body>
+</html>
