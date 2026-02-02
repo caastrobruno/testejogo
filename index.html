@@ -1,19 +1,229 @@
 <!DOCTYPE html>
-<html>
-<body style="margin:0; background:#5c94fc">
-<canvas id="c"></canvas>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Jogo</title>
+<style>
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#5c94fc;
+}
+canvas{display:block;}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
 
 <script>
-alert("JS ESTÁ FUNCIONANDO");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
+/* RESIZE */
+function resize(){
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+resize();
+addEventListener("resize", resize);
 
-c.width = innerWidth;
-c.height = innerHeight;
+/* CONSTANTES */
+const GRAVITY = 0.8;
+const SPEED = 5;
+const JUMP = -16;
+const LONG_JUMP = -24;
+const DOUBLE_TAP_TIME = 250;
 
-ctx.fillStyle = "red";
-ctx.fillRect(100,100,200,200);
+/* PLAYER — NÃO ALTERADO */
+const player = {
+  x:100,
+  y:0,
+  w:30,
+  h:45,
+  vx:0,
+  vy:0,
+  onGround:false,
+  lastJumpTime:0,
+  longUsed:false,
+  dir:1
+};
+
+const groundY = () => canvas.height - 80;
+
+/* CONTROLES — NÃO ALTERAR */
+let leftFinger = null;
+let rightFinger = null;
+let jumpFinger = null;
+
+canvas.addEventListener("touchstart", e=>{
+  e.preventDefault();
+
+  for(const t of e.changedTouches){
+    const third = canvas.width / 3;
+    const now = Date.now();
+
+    if(t.clientX < third && leftFinger === null){
+      leftFinger = t.identifier;
+      player.dir = -1;
+    }
+    else if(t.clientX > third*2 && rightFinger === null){
+      rightFinger = t.identifier;
+      player.dir = 1;
+    }
+    else if(
+      t.clientX >= third &&
+      t.clientX <= third*2 &&
+      jumpFinger === null
+    ){
+      jumpFinger = t.identifier;
+
+      if(player.onGround){
+        player.vy = JUMP;
+        player.onGround = false;
+        player.lastJumpTime = now;
+        player.longUsed = false;
+      }
+      else if(
+        !player.longUsed &&
+        now - player.lastJumpTime < DOUBLE_TAP_TIME
+      ){
+        player.vy = LONG_JUMP;
+        player.longUsed = true;
+      }
+    }
+  }
+});
+
+canvas.addEventListener("touchend", e=>{
+  e.preventDefault();
+  for(const t of e.changedTouches){
+    if(t.identifier === leftFinger) leftFinger = null;
+    if(t.identifier === rightFinger) rightFinger = null;
+    if(t.identifier === jumpFinger) jumpFinger = null;
+  }
+});
+
+/* ===== CENÁRIO ===== */
+const pipes = [
+  {x:400, w:50, h:120},
+  {x:700, w:50, h:160}
+];
+
+const turtles = [
+  {x:550, y:groundY()-30, w:30, h:30, dir:1}
+];
+
+const plants = [
+  {x:420, h:60}
+];
+
+let camX = 0;
+
+/* UPDATE */
+function update(){
+  player.vx = 0;
+
+  if(leftFinger !== null){
+    player.vx = -SPEED;
+    player.dir = -1;
+  }
+  if(rightFinger !== null){
+    player.vx = SPEED;
+    player.dir = 1;
+  }
+
+  player.vy += GRAVITY;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  /* CHÃO */
+  if(player.y + player.h >= groundY()){
+    player.y = groundY() - player.h;
+    player.vy = 0;
+    player.onGround = true;
+    player.longUsed = false;
+  }
+
+  /* CANOS (topo e lado) */
+  pipes.forEach(p=>{
+    const top = groundY() - p.h;
+
+    if(
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x &&
+      player.y + player.h >= top &&
+      player.y + player.h - player.vy < top
+    ){
+      player.y = top - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+    else if(
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x &&
+      player.y + player.h > top
+    ){
+      if(player.vx > 0) player.x = p.x - player.w;
+      if(player.vx < 0) player.x = p.x + p.w;
+    }
+  });
+
+  /* TARTARUGAS */
+  turtles.forEach(t=>{
+    t.x += t.dir * 1.5;
+    if(t.x < 0 || t.x > 2000) t.dir *= -1;
+  });
+
+  camX = player.x - 150;
+}
+
+/* DRAW */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  /* CHÃO */
+  ctx.fillStyle="#7c4a16";
+  ctx.fillRect(-camX, groundY(), 4000, 80);
+
+  /* CANOS */
+  pipes.forEach(p=>{
+    const x = p.x - camX;
+    const y = groundY() - p.h;
+
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(x,y,p.w,p.h);
+    ctx.fillRect(x-6,y,p.w+12,14);
+  });
+
+  /* PLANTAS */
+  plants.forEach(pl=>{
+    const x = pl.x - camX;
+    const y = groundY() - pl.h;
+    ctx.fillStyle="red";
+    ctx.fillRect(x+15,y,20,pl.h);
+  });
+
+  /* TARTARUGAS */
+  turtles.forEach(t=>{
+    ctx.fillStyle="green";
+    ctx.fillRect(t.x-camX,t.y,t.w,t.h);
+  });
+
+  /* PLAYER */
+  ctx.fillStyle="red";
+  ctx.fillRect(player.x-camX,player.y,player.w,player.h);
+}
+
+/* LOOP */
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
 </script>
+
 </body>
 </html>
