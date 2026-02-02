@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Jogo</title>
+<title>Super Mario World</title>
 <style>
 html,body{
   margin:0;
@@ -36,7 +36,7 @@ const JUMP = -16;
 const LONG_JUMP = -24;
 const DOUBLE_TAP_TIME = 250;
 
-/* PLAYER — NÃO ALTERADO */
+/* PLAYER */
 const player = {
   x:100,
   y:0,
@@ -52,11 +52,12 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* CONTROLES — NÃO ALTERAR */
+/* CONTROLE POR DEDO (NÃO MEXER) */
 let leftFinger = null;
 let rightFinger = null;
 let jumpFinger = null;
 
+/* TOUCH START */
 canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
 
@@ -96,8 +97,10 @@ canvas.addEventListener("touchstart", e=>{
   }
 });
 
+/* TOUCH END */
 canvas.addEventListener("touchend", e=>{
   e.preventDefault();
+
   for(const t of e.changedTouches){
     if(t.identifier === leftFinger) leftFinger = null;
     if(t.identifier === rightFinger) rightFinger = null;
@@ -105,24 +108,21 @@ canvas.addEventListener("touchend", e=>{
   }
 });
 
-/* ===== CENÁRIO ===== */
-const pipes = [
-  {x:400, w:50, h:120},
-  {x:700, w:50, h:160}
+/* 🐢 TARTARUGA */
+const koopas = [
+  {
+    x: 500,
+    y: 0,
+    w: 34,
+    h: 32,
+    vx: -2,
+    alive: true
+  }
 ];
-
-const turtles = [
-  {x:550, y:groundY()-30, w:30, h:30, dir:1}
-];
-
-const plants = [
-  {x:420, h:60}
-];
-
-let camX = 0;
 
 /* UPDATE */
 function update(){
+  /* PLAYER */
   player.vx = 0;
 
   if(leftFinger !== null){
@@ -138,7 +138,6 @@ function update(){
   player.x += player.vx;
   player.y += player.vy;
 
-  /* CHÃO */
   if(player.y + player.h >= groundY()){
     player.y = groundY() - player.h;
     player.vy = 0;
@@ -146,37 +145,46 @@ function update(){
     player.longUsed = false;
   }
 
-  /* CANOS (topo e lado) */
-  pipes.forEach(p=>{
-    const top = groundY() - p.h;
+  /* KOOPA */
+  koopas.forEach(k=>{
+    if(!k.alive) return;
 
-    if(
-      player.x < p.x + p.w &&
-      player.x + player.w > p.x &&
-      player.y + player.h >= top &&
-      player.y + player.h - player.vy < top
-    ){
-      player.y = top - player.h;
-      player.vy = 0;
-      player.onGround = true;
+    k.vy = (k.vy || 0) + GRAVITY;
+    k.x += k.vx;
+    k.y += k.vy;
+
+    if(k.y + k.h >= groundY()){
+      k.y = groundY() - k.h;
+      k.vy = 0;
     }
-    else if(
-      player.x < p.x + p.w &&
-      player.x + player.w > p.x &&
-      player.y + player.h > top
-    ){
-      if(player.vx > 0) player.x = p.x - player.w;
-      if(player.vx < 0) player.x = p.x + p.w;
+
+    // Limites da tela
+    if(k.x < 0 || k.x + k.w > canvas.width){
+      k.vx *= -1;
+    }
+
+    // COLISÃO PLAYER x KOOPA
+    const hit =
+      player.x < k.x + k.w &&
+      player.x + player.w > k.x &&
+      player.y < k.y + k.h &&
+      player.y + player.h > k.y;
+
+    if(hit){
+      // Pisou em cima
+      if(player.vy > 0 && player.y + player.h - player.vy <= k.y){
+        k.alive = false;
+        player.vy = JUMP / 1.3;
+      } 
+      else {
+        // Bateu de lado = reset simples
+        player.x = 100;
+        player.y = 0;
+        player.vx = 0;
+        player.vy = 0;
+      }
     }
   });
-
-  /* TARTARUGAS */
-  turtles.forEach(t=>{
-    t.x += t.dir * 1.5;
-    if(t.x < 0 || t.x > 2000) t.dir *= -1;
-  });
-
-  camX = player.x - 150;
 }
 
 /* DRAW */
@@ -185,35 +193,22 @@ function draw(){
 
   /* CHÃO */
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(-camX, groundY(), 4000, 80);
-
-  /* CANOS */
-  pipes.forEach(p=>{
-    const x = p.x - camX;
-    const y = groundY() - p.h;
-
-    ctx.fillStyle="#2ecc71";
-    ctx.fillRect(x,y,p.w,p.h);
-    ctx.fillRect(x-6,y,p.w+12,14);
-  });
-
-  /* PLANTAS */
-  plants.forEach(pl=>{
-    const x = pl.x - camX;
-    const y = groundY() - pl.h;
-    ctx.fillStyle="red";
-    ctx.fillRect(x+15,y,20,pl.h);
-  });
-
-  /* TARTARUGAS */
-  turtles.forEach(t=>{
-    ctx.fillStyle="green";
-    ctx.fillRect(t.x-camX,t.y,t.w,t.h);
-  });
+  ctx.fillRect(0,groundY(),canvas.width,80);
 
   /* PLAYER */
   ctx.fillStyle="red";
-  ctx.fillRect(player.x-camX,player.y,player.w,player.h);
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+
+  /* KOOPAS */
+  koopas.forEach(k=>{
+    if(!k.alive) return;
+
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(k.x,k.y,k.w,k.h);
+
+    ctx.fillStyle="#145a32";
+    ctx.fillRect(k.x+4,k.y+6,k.w-8,k.h-10);
+  });
 }
 
 /* LOOP */
