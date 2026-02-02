@@ -84,14 +84,6 @@ canvas.addEventListener("touchend",e=>{
   }
 });
 
-/* COLISÃO */
-function collide(a,b){
-  return a.x<a.x+a.w && 
-         a.x+a.w>b.x &&
-         a.y<a.y+a.h &&
-         a.y+a.h>b.y;
-}
-
 /* FASES */
 const levels = [
   {
@@ -102,7 +94,7 @@ const levels = [
     turtles:[
       {x:600,w:32,h:32,vx:-1.2,alive:true}
     ],
-    flag:{x:1000}
+    flag:{x:1100}
   },
   {
     pipes:[
@@ -114,25 +106,24 @@ const levels = [
       {x:500,w:32,h:32,vx:-1.5,alive:true},
       {x:820,w:32,h:32,vx:1.2,alive:true}
     ],
-    flag:{x:1200}
+    flag:{x:1300}
   }
 ];
 
-let currentLevel = 0;
+let currentLevel=0;
 let pipes=[], turtles=[], plants=[], flag={};
+let camX=0;
 
 function loadLevel(i){
   const lvl = levels[i];
   pipes = JSON.parse(JSON.stringify(lvl.pipes));
   turtles = JSON.parse(JSON.stringify(lvl.turtles));
   plants = pipes.map(p=>({pipe:p,offset:0,dir:-1}));
-  flag = {x:lvl.flag.x,w:20,h:120};
+  flag = {x:lvl.flag.x,w:12,h:140};
   player.x=100; player.y=0; player.vy=0;
 }
-
 loadLevel(0);
 
-/* RESET */
 function resetPlayer(){
   player.x=100; player.y=0; player.vy=0;
 }
@@ -171,10 +162,10 @@ function update(){
   turtles.forEach(t=>{
     if(!t.alive) return;
     t.x+=t.vx; t.y=groundY()-t.h;
-    if(player.x< t.x+t.w && player.x+player.w>t.x &&
-       player.y< t.y+t.h && player.y+player.h>t.y){
+    if(player.x<t.x+t.w && player.x+player.w>t.x &&
+       player.y<t.y+t.h && player.y+player.h>t.y){
       if(player.vy>0 && prevY+player.h<=t.y){
-        t.alive=false; player.vy=JUMP/1.5;
+        t.alive=false; player.vy=JUMP/1.4;
       } else resetPlayer();
     }
   });
@@ -194,13 +185,14 @@ function update(){
     }
   });
 
-  /* BANDEIRA */
-  const flagBox={x:flag.x,y:groundY()-flag.h,w:flag.w,h:flag.h};
-  if(player.x+player.w>flagBox.x){
+  if(player.x+player.w>flag.x){
     currentLevel++;
     if(currentLevel<levels.length) loadLevel(currentLevel);
-    else alert("🎉 Fim do jogo!");
+    else alert("🎉 Todas as fases concluídas!");
   }
+
+  camX = player.x - canvas.width/2 + player.w/2;
+  if(camX < 0) camX = 0;
 }
 
 /* DRAW */
@@ -212,33 +204,34 @@ function draw(){
 
   pipes.forEach(p=>{
     ctx.fillStyle="#2ecc71";
-    ctx.fillRect(p.x,groundY()-p.h,p.w,p.h);
+    ctx.fillRect(p.x-camX,groundY()-p.h,p.w,p.h);
   });
 
   turtles.forEach(t=>{
     if(t.alive){
       ctx.fillStyle="#27ae60";
-      ctx.fillRect(t.x,t.y,t.w,t.h);
+      ctx.fillRect(t.x-camX,t.y,t.w,t.h);
     }
   });
 
   plants.forEach(pl=>{
     ctx.fillStyle="red";
     ctx.fillRect(
-      pl.pipe.x+6,
+      pl.pipe.x+6-camX,
       groundY()-pl.pipe.h+pl.offset-30,
       pl.pipe.w-12,
       30
     );
   });
 
+  /* BANDEIRA */
   ctx.fillStyle="white";
-  ctx.fillRect(flag.x,groundY()-flag.h,flag.w,flag.h);
+  ctx.fillRect(flag.x-camX,groundY()-flag.h,flag.w,flag.h);
   ctx.fillStyle="black";
-  ctx.fillRect(flag.x+flag.w,groundY()-flag.h+10,40,30);
+  ctx.fillRect(flag.x+flag.w-camX,groundY()-flag.h+20,40,30);
 
   ctx.fillStyle="red";
-  ctx.fillRect(player.x,player.y,player.w,player.h);
+  ctx.fillRect(player.x-camX,player.y,player.w,player.h);
 }
 
 /* LOOP */
