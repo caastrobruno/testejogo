@@ -98,7 +98,6 @@ canvas.addEventListener("touchstart", e=>{
 
 canvas.addEventListener("touchend", e=>{
   e.preventDefault();
-
   for(const t of e.changedTouches){
     if(t.identifier === leftFinger) leftFinger = null;
     if(t.identifier === rightFinger) rightFinger = null;
@@ -106,7 +105,7 @@ canvas.addEventListener("touchend", e=>{
   }
 });
 
-/* FUNÇÃO DE COLISÃO */
+/* COLISÃO */
 function collide(a,b){
   return (
     a.x < b.x + b.w &&
@@ -132,14 +131,18 @@ const plants = pipes.map(p=>({
   dir:-1
 }));
 
-/* UPDATE */
+/* RESET */
 function resetPlayer(){
   player.x = 100;
   player.y = 0;
   player.vy = 0;
 }
 
+/* UPDATE */
 function update(){
+  const prevX = player.x;
+  const prevY = player.y;
+
   player.vx = 0;
 
   if(leftFinger !== null){
@@ -155,6 +158,7 @@ function update(){
   player.x += player.vx;
   player.y += player.vy;
 
+  /* CHÃO */
   if(player.y + player.h >= groundY()){
     player.y = groundY() - player.h;
     player.vy = 0;
@@ -162,22 +166,36 @@ function update(){
     player.longUsed = false;
   }
 
-  /* COLISÃO COM CANOS */
+  /* CANOS (TOP + LADOS) */
   pipes.forEach(p=>{
-    const top = groundY() - p.h;
+    const pipeBox = {
+      x:p.x,
+      y:groundY() - p.h,
+      w:p.w,
+      h:p.h
+    };
 
-    if(
-      player.x < p.x + p.w &&
-      player.x + player.w > p.x
-    ){
+    if(collide(player, pipeBox)){
+      // topo
       if(
-        player.vy >= 0 &&
-        player.y + player.h >= top &&
-        player.y + player.h - player.vy < top
+        prevY + player.h <= pipeBox.y &&
+        player.vy >= 0
       ){
-        player.y = top - player.h;
+        player.y = pipeBox.y - player.h;
         player.vy = 0;
         player.onGround = true;
+      }
+      // esquerda
+      else if(
+        prevX + player.w <= pipeBox.x
+      ){
+        player.x = pipeBox.x - player.w;
+      }
+      // direita
+      else if(
+        prevX >= pipeBox.x + pipeBox.w
+      ){
+        player.x = pipeBox.x + pipeBox.w;
       }
     }
   });
@@ -192,7 +210,7 @@ function update(){
     if(collide(player,t)){
       if(
         player.vy > 0 &&
-        player.y + player.h - player.vy <= t.y
+        prevY + player.h <= t.y
       ){
         t.alive = false;
         player.vy = JUMP/1.5;
