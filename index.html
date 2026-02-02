@@ -52,7 +52,7 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* CONTROLES (NÃO MEXER) */
+/* CONTROLES — NÃO MEXER */
 let leftFinger = null;
 let rightFinger = null;
 let jumpFinger = null;
@@ -108,12 +108,16 @@ canvas.addEventListener("touchend", e=>{
   }
 });
 
-/* 🌱 PLANTA CARNÍVORA */
+/* CANO SÓLIDO */
+const pipe = {
+  x: 500,
+  w: 60,
+  h: 120
+};
+
+/* PLANTA */
 const plant = {
-  x: 600,
   baseY: groundY(),
-  w: 30,
-  h: 50,
   yOffset: 0,
   dir: -1,
   speed: 0.5,
@@ -138,6 +142,7 @@ function update(){
   player.x += player.vx;
   player.y += player.vy;
 
+  /* CHÃO */
   if(player.y + player.h >= groundY()){
     player.y = groundY() - player.h;
     player.vy = 0;
@@ -145,47 +150,54 @@ function update(){
     player.longUsed = false;
   }
 
-  /* PLANTA MOVIMENTO */
+  /* COLISÃO COM CANO */
+  const pipeTop = groundY() - pipe.h;
+
+  const hitX =
+    player.x < pipe.x + pipe.w &&
+    player.x + player.w > pipe.x;
+
+  const hitY =
+    player.y + player.h > pipeTop &&
+    player.y < groundY();
+
+  if(hitX && hitY){
+    /* CAINDO EM CIMA */
+    if(
+      player.vy >= 0 &&
+      player.y + player.h - player.vy <= pipeTop
+    ){
+      player.y = pipeTop - player.h;
+      player.vy = 0;
+      player.onGround = true;
+    }
+    /* BATIDA LATERAL */
+    else{
+      if(player.vx > 0){
+        player.x = pipe.x - player.w;
+      }
+      if(player.vx < 0){
+        player.x = pipe.x + pipe.w;
+      }
+    }
+  }
+
+  /* PLANTA */
   if(plant.wait > 0){
     plant.wait--;
   } else {
     plant.yOffset += plant.dir * plant.speed;
 
-    if(plant.yOffset <= -plant.h){
-      plant.yOffset = -plant.h;
+    if(plant.yOffset <= -50){
+      plant.yOffset = -50;
       plant.dir = 1;
       plant.wait = 60;
     }
-
     if(plant.yOffset >= 0){
       plant.yOffset = 0;
       plant.dir = -1;
       plant.wait = 90;
     }
-  }
-
-  /* COLISÃO PLAYER x PLANTA */
-  const px = player.x;
-  const py = player.y;
-  const pw = player.w;
-  const ph = player.h;
-
-  const fx = plant.x;
-  const fy = plant.baseY + plant.yOffset - plant.h;
-  const fw = plant.w;
-  const fh = plant.h;
-
-  const hit =
-    px < fx + fw &&
-    px + pw > fx &&
-    py < fy + fh &&
-    py + ph > fy;
-
-  if(hit){
-    player.x = 100;
-    player.y = 0;
-    player.vx = 0;
-    player.vy = 0;
   }
 }
 
@@ -198,23 +210,18 @@ function draw(){
   ctx.fillRect(0,groundY(),canvas.width,80);
 
   /* CANO */
-  ctx.fillStyle="#1e7f3b";
-  ctx.fillRect(plant.x-5, groundY()-40, plant.w+10, 40);
   ctx.fillStyle="#2ecc71";
-  ctx.fillRect(plant.x, groundY()-30, plant.w, 30);
+  ctx.fillRect(pipe.x-6, groundY()-pipe.h-10, pipe.w+12, 20);
+  ctx.fillRect(pipe.x, groundY()-pipe.h, pipe.w, pipe.h);
 
   /* PLANTA */
   ctx.fillStyle="#27ae60";
   ctx.fillRect(
-    plant.x,
-    plant.baseY + plant.yOffset - plant.h,
-    plant.w,
-    plant.h
+    pipe.x + 15,
+    groundY() - pipe.h + plant.yOffset - 50,
+    30,
+    50
   );
-
-  ctx.fillStyle="white";
-  ctx.fillRect(plant.x+5, plant.baseY + plant.yOffset - plant.h + 10, 5, 5);
-  ctx.fillRect(plant.x+20, plant.baseY + plant.yOffset - plant.h + 10, 5, 5);
 
   /* PLAYER */
   ctx.fillStyle="red";
