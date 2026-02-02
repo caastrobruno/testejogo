@@ -11,17 +11,28 @@ html,body{
   background:#5c94fc;
 }
 canvas{display:block;}
+#hud{
+  position:fixed;
+  top:10px;
+  left:10px;
+  font-family:Arial, sans-serif;
+  font-size:20px;
+  color:white;
+  text-shadow:2px 2px #000;
+}
 </style>
 </head>
 <body>
 
+<div id="hud">🪙 0</div>
 <canvas id="game"></canvas>
 
 <script>
+/* ================= BASE ================= */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const hud = document.getElementById("hud");
 
-/* RESIZE */
 function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
@@ -29,21 +40,17 @@ function resize(){
 resize();
 addEventListener("resize", resize);
 
-/* CONSTANTES */
+/* ============ CONSTANTES ============ */
 const GRAVITY = 0.8;
 const SPEED = 5;
 const JUMP = -16;
 const LONG_JUMP = -24;
 const DOUBLE_TAP_TIME = 250;
 
-/* PLAYER */
+/* ============ PLAYER ============ */
 const player = {
-  x:100,
-  y:0,
-  w:30,
-  h:45,
-  vx:0,
-  vy:0,
+  x:100,y:0,w:30,h:45,
+  vx:0,vy:0,
   onGround:false,
   lastJumpTime:0,
   longUsed:false,
@@ -52,12 +59,13 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* CONTROLES — NÃO MEXER */
+/* =====================================================
+   CONTROLES — NÃO MEXER (BASE VALIDADA)
+===================================================== */
 let leftFinger = null;
 let rightFinger = null;
 let jumpFinger = null;
 
-/* TOUCH START */
 canvas.addEventListener("touchstart", e=>{
   e.preventDefault();
 
@@ -97,7 +105,6 @@ canvas.addEventListener("touchstart", e=>{
   }
 });
 
-/* TOUCH END */
 canvas.addEventListener("touchend", e=>{
   e.preventDefault();
 
@@ -108,35 +115,44 @@ canvas.addEventListener("touchend", e=>{
   }
 });
 
-/* CANO SÓLIDO */
-const pipe = {
-  x: 500,
-  w: 60,
-  h: 120
-};
+/* ============ MUNDO ============ */
+let camX = 0;
 
-/* PLANTA */
-const plant = {
-  baseY: groundY(),
-  yOffset: 0,
-  dir: -1,
-  speed: 0.5,
-  wait: 0
-};
+/* CANOS */
+const pipes = [
+  {x:400,w:44,h:120},
+  {x:700,w:44,h:160},
+  {x:1050,w:44,h:120}
+];
 
-/* UPDATE */
+/* PLANTAS */
+const plants = pipes.map(p=>({
+  pipe:p,
+  y:0,
+  dir:-1,
+  offset:0
+}));
+
+/* TARTARUGAS */
+const turtles = [
+  {x:550,y:0,w:32,h:32,vx:-1.2},
+  {x:900,y:0,w:32,h:32,vx:1.2}
+];
+
+/* MOEDAS */
+let coins = [
+  {x:320,y:groundY()-140,collected:false},
+  {x:820,y:groundY()-200,collected:false},
+  {x:1120,y:groundY()-140,collected:false}
+];
+let coinCount = 0;
+
+/* ============ UPDATE ============ */
 function update(){
-  /* PLAYER */
+  /* MOVIMENTO */
   player.vx = 0;
-
-  if(leftFinger !== null){
-    player.vx = -SPEED;
-    player.dir = -1;
-  }
-  if(rightFinger !== null){
-    player.vx = SPEED;
-    player.dir = 1;
-  }
+  if(leftFinger!==null){ player.vx=-SPEED; player.dir=-1; }
+  if(rightFinger!==null){ player.vx=SPEED; player.dir=1; }
 
   player.vy += GRAVITY;
   player.x += player.vx;
@@ -150,82 +166,115 @@ function update(){
     player.longUsed = false;
   }
 
-  /* COLISÃO COM CANO */
-  const pipeTop = groundY() - pipe.h;
-
-  const hitX =
-    player.x < pipe.x + pipe.w &&
-    player.x + player.w > pipe.x;
-
-  const hitY =
-    player.y + player.h > pipeTop &&
-    player.y < groundY();
-
-  if(hitX && hitY){
-    /* CAINDO EM CIMA */
+  /* CANOS (colisão) */
+  pipes.forEach(p=>{
+    const top = groundY() - p.h;
     if(
-      player.vy >= 0 &&
-      player.y + player.h - player.vy <= pipeTop
+      player.x < p.x + p.w &&
+      player.x + player.w > p.x
     ){
-      player.y = pipeTop - player.h;
-      player.vy = 0;
-      player.onGround = true;
-    }
-    /* BATIDA LATERAL */
-    else{
-      if(player.vx > 0){
-        player.x = pipe.x - player.w;
+      if(
+        player.vy >= 0 &&
+        player.y + player.h >= top &&
+        player.y + player.h - player.vy < top
+      ){
+        player.y = top - player.h;
+        player.vy = 0;
+        player.onGround = true;
       }
-      if(player.vx < 0){
-        player.x = pipe.x + pipe.w;
+      else if(player.y + player.h > top){
+        if(player.vx > 0) player.x = p.x - player.w;
+        if(player.vx < 0) player.x = p.x + p.w;
       }
     }
-  }
+  });
 
-  /* PLANTA */
-  if(plant.wait > 0){
-    plant.wait--;
-  } else {
-    plant.yOffset += plant.dir * plant.speed;
+  /* PLANTAS */
+  plants.forEach(pl=>{
+    pl.offset += pl.dir * 0.5;
+    if(pl.offset < -40 || pl.offset > 0) pl.dir *= -1;
+    pl.y = groundY() - pl.pipe.h + pl.offset;
+  });
 
-    if(plant.yOffset <= -50){
-      plant.yOffset = -50;
-      plant.dir = 1;
-      plant.wait = 60;
+  /* TARTARUGAS */
+  turtles.forEach(t=>{
+    t.y = groundY() - t.h;
+    t.x += t.vx;
+
+    if(player.x < t.x + t.w &&
+       player.x + player.w > t.x &&
+       player.y < t.y + t.h &&
+       player.y + player.h > t.y
+    ){
+      // empurra
+      player.x -= t.vx * 10;
     }
-    if(plant.yOffset >= 0){
-      plant.yOffset = 0;
-      plant.dir = -1;
-      plant.wait = 90;
+  });
+
+  /* MOEDAS */
+  coins.forEach(c=>{
+    if(!c.collected &&
+      player.x < c.x+20 &&
+      player.x+player.w > c.x &&
+      player.y < c.y+20 &&
+      player.y+player.h > c.y
+    ){
+      c.collected = true;
+      coinCount++;
+      hud.innerHTML = "🪙 " + coinCount;
     }
-  }
+  });
+
+  camX = player.x - 150;
 }
 
-/* DRAW */
+/* ============ DRAW ============ */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   /* CHÃO */
   ctx.fillStyle="#7c4a16";
-  ctx.fillRect(0,groundY(),canvas.width,80);
+  ctx.fillRect(-camX,groundY(),4000,80);
 
-  /* CANO */
-  ctx.fillStyle="#2ecc71";
-  ctx.fillRect(pipe.x-6, groundY()-pipe.h-10, pipe.w+12, 20);
-  ctx.fillRect(pipe.x, groundY()-pipe.h, pipe.w, pipe.h);
+  /* CANOS */
+  pipes.forEach(p=>{
+    const x = p.x - camX;
+    const y = groundY() - p.h;
+    ctx.fillStyle="#2ecc71";
+    ctx.fillRect(x,y+14,p.w,p.h-14);
+    ctx.fillRect(x-6,y,p.w+12,16);
+  });
 
-  /* PLANTA */
-  ctx.fillStyle="#27ae60";
-  ctx.fillRect(
-    pipe.x + 15,
-    groundY() - pipe.h + plant.yOffset - 50,
-    30,
-    50
-  );
+  /* PLANTAS */
+  plants.forEach(pl=>{
+    ctx.fillStyle="red";
+    ctx.fillRect(
+      pl.pipe.x - camX + 6,
+      pl.y - 30,
+      pl.pipe.w - 12,
+      30
+    );
+  });
+
+  /* TARTARUGAS */
+  turtles.forEach(t=>{
+    ctx.fillStyle="#27ae60";
+    ctx.fillRect(t.x-camX,t.y,t.w,t.h);
+  });
+
+  /* MOEDAS */
+  coins.forEach(c=>{
+    if(!c.collected){
+      ctx.fillStyle="#f1c40f";
+      ctx.beginPath();
+      ctx.arc(c.x-camX+10,c.y+10,10,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
 
   /* PLAYER */
   ctx.fillStyle="red";
-  ctx.fillRect(player.x,player.y,player.w,player.h);
+  ctx.fillRect(player.x-camX,player.y,player.w,player.h);
 }
 
 /* LOOP */
@@ -236,6 +285,5 @@ function loop(){
 }
 loop();
 </script>
-
 </body>
 </html>
