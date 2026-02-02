@@ -34,7 +34,7 @@ addEventListener("resize", resize);
 const GRAVITY = 0.8;
 const SPEED = 5;
 const JUMP = -16;
-const LONG_JUMP = -20;
+const LONG_JUMP = -24;
 const DOUBLE_TAP_TIME = 250;
 
 /* PLAYER */
@@ -53,7 +53,9 @@ const player = {
 
 const groundY = () => canvas.height - 80;
 
-/* ================= CONTROLES (NÃO MEXIDOS) ================= */
+/* =================================================
+   CONTROLES — NÃO MEXER (CÓPIA EXATA)
+================================================= */
 let leftFinger = null;
 let rightFinger = null;
 let jumpFinger = null;
@@ -94,3 +96,8 @@ canvas.addEventListener("touchstart", e=>{
         player.longUsed = true;
       }
     }
+  }
+});
+
+canvas.addEventListener("touchend", e=>{
+  e.preventDefault
